@@ -1512,8 +1512,9 @@ const Flat = (() => {
     return out;
   }
 
-  // Returns the number of seam paths marked in cutFlag.
-  function planSeams(mesh, cutFlag) {
+  // Returns the number of seam paths marked in cutFlag. `force` also cuts inner
+  // loops that turn like a plain hole (used when the uncut piece will not lie flat).
+  function planSeams(mesh, cutFlag, force = false) {
     const { nV, loops, tau } = mesh;
     if (nV < 4) return 0;
     if (loops.length === 0) {
@@ -1543,7 +1544,7 @@ const Flat = (() => {
       // A rim of a sleeve/cup: almost no turning (the surface wraps around it)
       // and comparable in length to the outer boundary. Small holes whose
       // walls or fillets were painted are left alone.
-      if (i === outer || tau[i] <= -PI || loopLen[i] < 0.3 * loopLen[outer]) continue;
+      if (i === outer || (!force && tau[i] <= -PI) || loopLen[i] < 0.3 * loopLen[outer]) continue;
       const res = dijkstra(mesh, loops[i], inS);
       if (res.reached < 0) continue;
       const edges = pathEdges(res, res.reached);
@@ -2416,8 +2417,27 @@ const Flat = (() => {
         }
         if (mesh.nV < 3) { doneArea += ch.area; continue; }
         const probe = canSplit ? Math.min(25, full) : full;
-        const res = await flattenMesh(mesh, opts, tick, report, probe);
+        let res = await flattenMesh(mesh, opts, tick, report, probe);
         let dist = distortion(res.uv, mesh.F, res.fr);
+        // A ring whose inner edge turns like a plain hole (a sloped frame round a
+        // window, a shallow cone) can still not lie flat without a cut: try one
+        // seam from each larger inner loop to the outer edge and keep it if the
+        // piece really flattens better.
+        if (opts.autoSeam !== false && dist.max > Math.min(tol, 0.015) && mesh.loops.length >= 2) {
+          const before = cutFlag.slice();
+          const c = planSeams(mesh, cutFlag, true);
+          let kept = false;
+          if (c) {
+            const prep2 = prepare(model, ch.faces, faceLocal, cutFlag);
+            const mesh2 = buildMesh(model, prep2);
+            if (mesh2.nV >= 3) {
+              const res2 = await flattenMesh(mesh2, opts, tick, report, probe);
+              const dist2 = distortion(res2.uv, mesh2.F, res2.fr);
+              if (dist2.max < dist.max * 0.7) { prep = prep2; mesh = mesh2; res = res2; dist = dist2; seams += c; kept = true; }
+            }
+          }
+          if (!kept) cutFlag.set(before);
+        }
         if (canSplit && dist.max > tol) {
           const parts = splitChart(mesh, res.fr, minArea);
           if (parts.length >= 2 && await splitHelps(parts, dist.max)) {
