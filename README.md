@@ -17,6 +17,17 @@ Paint a surface on your 3D model, press **Unwrap**, and get true-scale (1:1) 2D 
 
 Everything runs in your browser. Your 3D files are never uploaded, stored or shared: there is no server behind this app. No account, no cookies, no analytics. The page only downloads its code libraries (three.js, jsPDF, Clipper) from jsDelivr and cdnjs and its fonts from Google Fonts; once it has loaded, it works without an internet connection.
 
+## Development
+
+No dependencies besides Node 18+. The app is one HTML page assembled from `src/`.
+
+- `node build.mjs` writes `dist/decal-unwrap.html` (open it in Chrome / Edge) and `dist/artifact.html`.
+- `node build.mjs --site` also refreshes `index.html`, the page GitHub Pages serves at https://decal.vdthe.com/.
+- `node serve.mjs` serves `dist/` at http://localhost:5178/.
+- Tests: `node tests/flat.test.mjs`, `node tests/layout.test.mjs`, `node tests/seams.test.mjs`, `node tests/project.test.mjs`, `node tests/tube.mjs`.
+
+Source: `src/geometry.js` (loading, welding), `src/flatten.js` (unwrap: seams, LSCM / ARAP, charts), `src/layout.js` (nesting, seam marks, tabs, SVG / PDF / DXF), `src/project.js` (.decal files), `src/app.js` (UI), `src/shell.html` + `src/styles.css`, textures in `src/assets/`.
+
 ## Printing at true size
 
 In the print dialog choose **Scale 100% / Actual size** and turn **Fit to page off**, then measure the 50 mm ruler on the printed sheet.

@@ -1,0 +1,377 @@
+<title>Decal Unwrap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Paint a surface on your 3D model and flatten it into true-scale 2D cut templates for printing. Runs entirely in your browser: your files are never uploaded.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<div class="app" id="app">
+  <aside class="side" id="side" aria-label="Controls" data-i18n-attr="aria-label:aria.controls">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="24" height="24"><path d="M5 9 L16 4 L27 9 L16 14 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 9 V21 L16 26 V14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M19 17 H28 V27 H19 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.2 1.6"/></svg>
+      </div>
+      <h1>Decal Unwrap</h1>
+      <p class="brand-sub"><span data-i18n="brand.sub">Flatten 3D surfaces into cut templates</span> <span class="mono">1:1 · mm</span></p>
+    </header>
+
+    <!-- ===== 3D panel ===== -->
+    <div id="panel-3d" class="panel">
+      <div class="col">
+      <section class="sec" aria-labelledby="h-model">
+        <div class="sec-head">
+          <h2 id="h-model" data-i18n="h.model">Model</h2>
+          <div class="head-btns">
+            <button type="button" class="btn sm" id="save-project" title="Save the model, painting and settings as one .decal file" data-i18n="btn.saveProject" data-i18n-attr="title:title.saveProject">Save project</button>
+            <button type="button" class="btn sm" id="open-project" title="Open a .decal project file" data-i18n="btn.openProject" data-i18n-attr="title:title.openProject">Open project</button>
+            <input type="file" id="project-input" accept=".decal,application/json" hidden>
+          </div>
+        </div>
+        <div class="file-row">
+          <label class="btn file-btn" id="drop-zone" for="file-input" title="or drop it on the 3D view · STL, OBJ, 3MF, PLY, GLB" data-i18n-attr="title:drop.sub">
+            <input type="file" id="file-input" accept=".stl,.obj,.3mf,.ply,.glb,.gltf,.decal" hidden>
+            <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M3 13v3h14v-3 M10 3v10 M6 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+            <span data-i18n="drop.title">Open 3D file…</span>
+          </label>
+          <button type="button" class="btn sm" id="demo-panel" data-i18n="demo.panel">Sample panel</button>
+          <button type="button" class="btn sm" id="demo-cyl" data-i18n="demo.cyl">Sample tube</button>
+        </div>
+        <div class="row unit-row">
+          <label class="inl"><span data-i18n="lbl.units">Units</span>
+            <select id="unit">
+              <option value="1" selected>mm</option>
+              <option value="10">cm</option>
+              <option value="1000">m</option>
+              <option value="25.4">inch</option>
+            </select>
+          </label>
+          <label class="inl"><span data-i18n="lbl.up">Up</span>
+            <select id="up-axis">
+              <option value="z">Z (STL, 3MF)</option>
+              <option value="y">Y (GLB, OBJ)</option>
+            </select>
+          </label>
+        </div>
+        <p class="model-info" id="model-info">No model loaded</p>
+      </section>
+
+      <section class="sec" aria-labelledby="h-tools">
+        <h2 id="h-tools" data-i18n="h.tools">Paint tools</h2>
+        <div class="seg" id="tools" role="group" aria-label="Tool" data-i18n-attr="aria-label:aria.tool">
+          <button type="button" class="seg-btn" data-tool="brush" id="tool-brush" aria-pressed="true" title="Brush (B)" data-i18n-attr="title:title.brushT">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 3.5l3 3-7.5 7.5-3-3z M5.5 11.5c-2 0-3 1.5-3 3.5 0 .8-.4 1.3-1 1.5 3 1 6 .2 6.5-2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span data-i18n="tool.brush">Brush</span></button>
+          <button type="button" class="seg-btn" data-tool="fill" id="tool-fill" aria-pressed="false" title="Fill a smooth area (F)" data-i18n-attr="title:title.fillT">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 9l6-6 7 7-6 6z M16.5 13s1.5 2 1.5 3a1.5 1.5 0 01-3 0c0-1 1.5-3 1.5-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span data-i18n="tool.fill">Fill</span></button>
+          <button type="button" class="seg-btn" data-tool="erase" id="tool-erase" aria-pressed="false" title="Erase (E)" data-i18n-attr="title:title.eraseT">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 16l-4-4 8-8 6 6-6 6z M9 16h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span data-i18n="tool.erase">Erase</span></button>
+          <button type="button" class="seg-btn" data-tool="block" id="tool-block" aria-pressed="false" title="Paint an exclusion zone: brush and fill never select or spread into it (X)" data-i18n-attr="title:title.block">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 15L15 5" stroke="currentColor" stroke-width="1.5"/></svg>
+            <span data-i18n="tool.block">Block</span></button>
+          <button type="button" class="seg-btn" data-tool="cut" id="tool-cut" aria-pressed="false" title="Mark a cut: click points along the surface; the decal is slit along this line (C)" data-i18n-attr="title:title.cut">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 13.4L14 3 M13.5 13.4L6 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span data-i18n="tool.cut">Cut</span></button>
+          <button type="button" class="seg-btn" data-tool="orbit" id="tool-orbit" aria-pressed="false" title="Orbit the view (V)" data-i18n-attr="title:title.orbitT">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="7.5" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 4.5l2.5 1.8-1 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/></svg>
+            <span data-i18n="tool.orbit">Orbit</span></button>
+        </div>
+        <label class="srow"><span data-i18n="lbl.brush">Brush</span>
+          <input type="range" id="brush-size" min="0.1" max="50" step="0.1" value="5">
+          <output id="brush-val" class="mono">—</output></label>
+        <label class="srow"><span data-i18n="lbl.sharp">Sharp edge</span>
+          <input type="range" id="angle" min="5" max="90" step="1" value="30">
+          <output id="angle-val" class="mono">30°</output></label>
+        <div class="srow">
+          <label class="check" title="Stays off raised ridges and fillets" data-i18n-attr="title:title.cone"><input type="checkbox" id="cone-on" checked><span data-i18n="chk.cone">Same direction ≤</span></label>
+          <span class="srow-ctl" id="cone-field"><input type="range" id="cone" min="1" max="90" step="1" value="10" aria-label="Max angle from the clicked face" data-i18n-attr="aria-label:lbl.cone"><output id="cone-val" class="mono">10°</output></span>
+        </div>
+        <div class="crow">
+          <label class="check"><input type="checkbox" id="stop-sharp" checked><span data-i18n="chk.stopSharp">Stop at sharp edges</span></label>
+          <label class="check"><input type="checkbox" id="front-only" checked><span data-i18n="chk.front">Facing camera only</span></label>
+        </div>
+        <details class="hints" id="hints">
+          <summary data-i18n="hints.title">Mouse &amp; shortcuts</summary>
+          <dl>
+            <dt data-i18n="hint.lmb">Left mouse</dt><dd data-i18n="hint.lmbD">paint / fill</dd>
+            <dt data-i18n="hint.rmb">Right mouse</dt><dd data-i18n="hint.rmbD">orbit</dd>
+            <dt data-i18n="hint.mmb">Middle, Shift + right</dt><dd data-i18n="hint.mmbD">pan</dd>
+            <dt data-i18n="hint.wheel">Wheel</dt><dd data-i18n="hint.wheelD">zoom</dd>
+            <dt data-i18n="hint.space">Hold Space</dt><dd data-i18n="hint.spaceD">orbit with the left button</dd>
+            <dt data-i18n="hint.shift">Hold Shift while painting</dt><dd data-i18n="hint.shiftD">erase</dd>
+            <dt data-i18n="hint.x">X (Block)</dt><dd data-i18n="hint.xD">paint an exclusion zone; hold Shift to unblock</dd>
+            <dt data-i18n="hint.c">C (Cut)</dt><dd data-i18n="hint.cD">click points to draw a slit; double-click, Enter or Esc ends it; Shift+click removes</dd>
+            <dt>[ &nbsp; ]</dt><dd data-i18n="hint.bracketD">smaller / larger brush</dd>
+            <dt>1 – 8</dt><dd data-i18n="hint.numD">pick decal group</dd>
+            <dt>Ctrl+Z / Ctrl+Y</dt><dd data-i18n="hint.undoD">undo / redo</dd>
+          </dl>
+        </details>
+      </section>
+
+      </div>
+      <div class="col">
+      <section class="sec" aria-labelledby="h-groups">
+        <div class="sec-head">
+          <h2 id="h-groups" data-i18n="h.groups" title="Each group prints as its own pieces. Touching areas painted in different colours are always cut apart." data-i18n-attr="title:note.groups">Decal groups</h2>
+          <div class="head-btns">
+            <button type="button" class="btn icon" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" data-i18n-attr="title:title.undo;aria-label:title.undo">↶</button>
+            <button type="button" class="btn icon" id="redo" title="Redo (Ctrl+Y)" aria-label="Redo" data-i18n-attr="title:title.redo;aria-label:title.redo">↷</button>
+            <button type="button" class="btn sm" id="reset-all" title="Clear paint, blocks, cuts and the unwrap result (Ctrl+Z brings them back)" data-i18n="btn.reset" data-i18n-attr="title:title.reset">↺ Reset</button>
+          </div>
+        </div>
+        <div class="chips" id="group-chips" role="group" aria-label="Pick a group" data-i18n-attr="aria-label:aria.groups"></div>
+        <div class="row four">
+          <button type="button" class="btn sm" id="grow" title="Grow the current group by one ring of faces" data-i18n="btn.grow" data-i18n-attr="title:title.grow">Grow</button>
+          <button type="button" class="btn sm" id="shrink" title="Shrink the current group by one ring of faces" data-i18n="btn.shrink" data-i18n-attr="title:title.shrink">Shrink</button>
+          <button type="button" class="btn sm" id="clear-group" title="Clear the current group" data-i18n="btn.clearGroup" data-i18n-attr="title:title.clearGroup">Clear</button>
+          <button type="button" class="btn sm" id="clear-all" title="Clear all groups" data-i18n="btn.clearAll" data-i18n-attr="title:title.clearAll">Clear all</button>
+        </div>
+        <div class="status-row">
+          <span class="stat"><span class="block-swatch" aria-hidden="true"></span><span class="block-info" id="block-info">Blocked: none</span>
+            <button type="button" class="btn icon" id="clear-block" title="Unblock all" aria-label="Unblock all" data-i18n-attr="title:btn.unblock;aria-label:btn.unblock">✕</button></span>
+          <span class="stat"><span class="cut-swatch" aria-hidden="true"></span><span class="block-info" id="cut-info">Cuts: none</span>
+            <button type="button" class="btn icon" id="clear-cuts" title="Remove cuts" aria-label="Remove cuts" data-i18n-attr="title:btn.removeCuts;aria-label:btn.removeCuts">✕</button></span>
+        </div>
+      </section>
+
+      <section class="sec sec-go" aria-labelledby="h-go">
+        <h2 id="h-go" data-i18n="h.unwrap">Unwrap</h2>
+        <div class="srow">
+          <label class="check" title="Split the surface into low-stretch pieces, like a UV unwrap" data-i18n-attr="title:title.islands"><input type="checkbox" id="islands" checked><span data-i18n="chk.islands">UV pieces ≤</span></label>
+          <span class="srow-ctl" id="island-field"><input type="range" id="island-tol" min="0.5" max="10" step="0.5" value="1.5" aria-label="Max stretch per piece" data-i18n-attr="aria-label:lbl.stretch"><output id="island-val" class="mono">1.5%</output></span>
+        </div>
+        <div class="row q-row">
+          <label class="inl"><span data-i18n="lbl.quality">Quality</span>
+            <select id="quality">
+              <option value="fast" data-i18n="q.fast">Fast</option>
+              <option value="standard" selected data-i18n="q.standard">Standard</option>
+              <option value="high" data-i18n="q.high">High</option>
+            </select>
+          </label>
+          <label class="check" title="Cut tubes and closed shapes open automatically" data-i18n-attr="title:title.autoSeam"><input type="checkbox" id="auto-seam" checked><span data-i18n="chk.autoSeam">Auto seams</span></label>
+        </div>
+        <button type="button" class="btn primary big" id="generate" title="Pieces are rotated to match the current view, so turn the model the way you want it before you press Unwrap." data-i18n="btn.generate" data-i18n-attr="title:note.view">Unwrap · Generate</button>
+        <div class="progress" id="progress" hidden>
+          <div class="bar"><span id="progress-bar"></span></div>
+          <div class="progress-row"><span id="progress-text" class="mono">…</span><button type="button" class="btn sm" id="cancel" data-i18n="btn.cancel">Cancel</button></div>
+        </div>
+      </section>
+      </div>
+    </div>
+
+    <!-- ===== 2D panel ===== -->
+    <div id="panel-2d" class="panel" hidden>
+      <div class="col">
+      <section class="sec callout" aria-labelledby="h-print-note">
+        <h2 id="h-print-note" class="sr-only" data-i18n="h.printNote">Print at true size</h2>
+        <p data-i18n-html="print.note">Print at <b>Scale 100%</b> (Actual size) with <b>Fit to page off</b>, then check the 50 mm ruler.</p>
+        <p id="artifact-note" hidden data-i18n-html="print.artifact">This shared page cannot open the print dialog. Use <b>PDF</b> and print the PDF at Actual size.</p>
+        <div class="row four">
+          <button type="button" class="btn primary" id="btn-print" data-i18n="btn.print">Print…</button>
+          <button type="button" class="btn primary" id="btn-pdf" title="Download PDF" data-i18n="btn.pdf" data-i18n-attr="title:title.pdf">PDF</button>
+          <button type="button" class="btn" id="btn-svg" title="SVG for cutting machines" data-i18n="btn.svg" data-i18n-attr="title:title.svg">SVG</button>
+          <button type="button" class="btn" id="btn-dxf" title="Download DXF" data-i18n="btn.dxf" data-i18n-attr="title:title.dxf">DXF</button>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-paper">
+        <h2 id="h-paper" data-i18n="h.paper">Paper</h2>
+        <div class="row paper-row">
+          <label class="inl"><span data-i18n="lbl.paper">Paper</span>
+            <select id="paper">
+              <option value="A2">A2 · 420×594</option>
+              <option value="A3">A3 · 297×420</option>
+              <option value="A4" selected>A4 · 210×297</option>
+              <option value="A5">A5 · 148×210</option>
+              <option value="A6">A6 · 105×148</option>
+              <option value="B5">B5 · 176×250</option>
+              <option value="Letter">Letter · 216×279</option>
+              <option value="Legal">Legal · 216×356</option>
+              <option value="Tabloid">Tabloid · 279×432</option>
+              <option value="custom" data-i18n="opt.custom">Custom…</option>
+            </select>
+          </label>
+          <select id="orientation" aria-label="Orientation" title="Orientation" data-i18n-attr="aria-label:lbl.orientation;title:lbl.orientation">
+            <option value="auto" selected data-i18n="opt.auto">Auto</option>
+            <option value="portrait" data-i18n="opt.portrait">Portrait</option>
+            <option value="landscape" data-i18n="opt.landscape">Landscape</option>
+          </select>
+        </div>
+        <div class="row two" id="custom-size" hidden>
+          <label class="inl"><span data-i18n="lbl.width">W mm</span><input type="number" id="custom-w" min="50" max="2000" step="1" value="210"></label>
+          <label class="inl"><span data-i18n="lbl.height">H mm</span><input type="number" id="custom-h" min="50" max="2000" step="1" value="297"></label>
+        </div>
+        <div class="row three stk">
+          <label class="inl" title="Page margin (mm)" data-i18n-attr="title:title.margin"><span data-i18n="lbl.margin">Margin</span><input type="number" id="margin" min="0" max="40" step="0.5" value="10"></label>
+          <label class="inl" title="Gap between pieces (mm)" data-i18n-attr="title:title.gap"><span data-i18n="lbl.gap">Gap</span><input type="number" id="gap" min="0" max="40" step="0.5" value="4"></label>
+          <label class="inl" title="Overlap when a piece is tiled over sheets (mm)" data-i18n-attr="title:title.overlap"><span data-i18n="lbl.overlap">Overlap</span><input type="number" id="overlap" min="0" max="60" step="1" value="10"></label>
+        </div>
+        <label class="check" title="Pieces longer than the paper are cut into parts (at corners where possible) and nested on the same sheet, instead of being tiled over several sheets" data-i18n-attr="title:title.splitLong"><input type="checkbox" id="split-long" checked><span data-i18n="chk.splitLong">Cut oversize pieces to fit the paper</span></label>
+      </section>
+
+      <section class="sec" aria-labelledby="h-piece">
+        <h2 id="h-piece" data-i18n="h.pieces">Pieces</h2>
+        <div class="row rot-row">
+          <label class="inl"><span data-i18n="lbl.rotation">Rotate</span>
+            <select id="rotate-mode">
+              <option value="view" data-i18n="opt.view">Like 3D view</option>
+              <option value="optimize" selected data-i18n="opt.optimize">Save paper</option>
+            </select>
+          </label>
+          <label class="inl" title="Cut line offset (mm). Negative shrinks the decal so it never overhangs the edge; positive grows it." data-i18n-attr="title:title.offset"><span data-i18n="lbl.offset">Offset</span><input type="number" id="offset" min="-5" max="5" step="0.1" value="0"><output id="offset-val" class="mono" hidden>0</output></label>
+        </div>
+        <label class="check"><input type="checkbox" id="mirror" checked><span data-i18n="chk.mirror">Mirror (print on the back / transfer paper)</span></label>
+        <div class="row two">
+          <label class="inl" title="Colour and artwork run this far past the cut line, so a slightly off cut never shows a white edge" data-i18n-attr="title:title.bleed"><span data-i18n="lbl.bleed">Bleed mm</span><input type="number" id="bleed" min="0" max="5" step="0.5" value="0"></label>
+          <div class="inl" title="Adds flaps along one side of every seam, to glue under the neighbouring piece" data-i18n-attr="title:title.tabs"><label class="check"><input type="checkbox" id="tabs"><span data-i18n="chk.tabs">Glue tabs</span></label><input type="number" id="tab-width" min="2" max="15" step="1" value="5" aria-label="Tab width (mm)" data-i18n-attr="aria-label:lbl.tabWidth"></div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-art">
+        <div class="sec-head">
+          <h2 id="h-art" data-i18n="h.art">Artwork</h2>
+          <span class="art-target" id="art-target" data-i18n="art.pick">Click a piece on the sheet</span>
+        </div>
+        <div class="row two">
+          <label class="btn sm" id="art-add" title="Add an image (PNG, JPG, SVG, WebP) to the selected piece" data-i18n-attr="title:title.artAdd"><input type="file" id="art-input" accept="image/*" hidden><span data-i18n="btn.artAdd">Image…</span></label>
+          <select id="art-texture" aria-label="Built-in texture" title="Built-in texture, repeated as a pattern" data-i18n-attr="aria-label:lbl.texture;title:title.texture">
+            <option value="" data-i18n="tex.pick">Texture…</option>
+            <option value="carbon" data-i18n="tex.carbon">Carbon fiber</option>
+            <optgroup label="Leather" data-i18n-attr="label:tex.leather">
+              <option value="leather1" data-i18n="tex.leather1">Leather 1</option>
+              <option value="leather2" data-i18n="tex.leather2">Leather 2</option>
+              <option value="leather3" data-i18n="tex.leather3">Leather 3</option>
+              <option value="leather4" data-i18n="tex.leather4">Leather 4</option>
+            </optgroup>
+            <optgroup label="Metal" data-i18n-attr="label:tex.metal">
+              <option value="metal1" data-i18n="tex.metal1">Metal 1</option>
+              <option value="metal2" data-i18n="tex.metal2">Metal 2</option>
+              <option value="metal3" data-i18n="tex.metal3">Metal 3</option>
+              <option value="metal4" data-i18n="tex.metal4">Metal 4</option>
+            </optgroup>
+            <optgroup label="Wood" data-i18n-attr="label:tex.wood">
+              <option value="wood1" data-i18n="tex.wood1">Wood 1</option>
+              <option value="wood2" data-i18n="tex.wood2">Wood 2</option>
+              <option value="wood3" data-i18n="tex.wood3">Wood 3</option>
+              <option value="wood4" data-i18n="tex.wood4">Wood 4</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="row three">
+          <button type="button" class="btn sm" id="art-fit" title="Show the whole image inside the piece" data-i18n="btn.artFit" data-i18n-attr="title:title.artFit">Fit</button>
+          <button type="button" class="btn sm" id="art-fill" title="Cover the whole piece with the image" data-i18n="btn.artFill" data-i18n-attr="title:title.artFill">Fill</button>
+          <button type="button" class="btn sm" id="art-remove" title="Remove the image from this piece" data-i18n="btn.artRemove" data-i18n-attr="title:title.artRemove">Remove</button>
+        </div>
+        <div class="row three stk">
+          <label class="inl"><span data-i18n="lbl.artSize">Width mm</span><input type="number" id="art-size" min="1" max="2000" step="1" value="50"></label>
+          <label class="inl"><span data-i18n="lbl.artRot">Rotate °</span><input type="number" id="art-rot" min="-180" max="180" step="5" value="0"></label>
+          <label class="inl"><span data-i18n="lbl.artOp">Opacity %</span><input type="number" id="art-op" min="5" max="100" step="5" value="100"></label>
+        </div>
+        <div class="crow">
+          <label class="check" title="Repeat the image as a pattern (carbon, camo…)" data-i18n-attr="title:title.artTile"><input type="checkbox" id="art-tile"><span data-i18n="chk.artTile">Repeat as pattern</span></label>
+          <button type="button" class="link-btn" id="art-all" title="Use this image on every piece" data-i18n="btn.artAll" data-i18n-attr="title:title.artAll">Apply to all pieces</button>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-lines">
+        <h2 id="h-lines" data-i18n="h.lines">Lines</h2>
+        <label class="srow"><span data-i18n="lbl.lineWidth">Cut line</span>
+          <input type="range" id="line-width" min="0.1" max="1" step="0.05" value="0.25">
+          <output id="lw-val" class="mono">0.25 mm</output></label>
+        <div class="srow">
+          <label class="check"><input type="checkbox" id="folds" checked><span data-i18n="chk.folds">Creases ≥</span></label>
+          <span class="srow-ctl"><input type="range" id="fold-angle" min="5" max="90" step="1" value="30" aria-label="Crease angle" data-i18n-attr="aria-label:lbl.crease"><output id="fold-val" class="mono">30°</output></span>
+        </div>
+        <div class="crow">
+          <label class="check"><input type="checkbox" id="clean" checked><span data-i18n="chk.clean">Clean outlines</span></label>
+          <label class="check"><input type="checkbox" id="labels" checked><span data-i18n="chk.labels">Piece numbers</span></label>
+          <label class="check"><input type="checkbox" id="calibration" checked><span data-i18n="chk.ruler">50 mm ruler</span></label>
+          <label class="check" title="Matching ticks and letters on both sides of every seam, so pieces line up" data-i18n-attr="title:title.seamMarks"><input type="checkbox" id="seam-marks" checked><span data-i18n="chk.seamMarks">Seam marks</span></label>
+          <span class="check fillrow"><label class="check"><input type="checkbox" id="fill"><span data-i18n="chk.fill">Fill</span></label><input type="color" id="fill-color" value="#ffd84d" aria-label="Fill colour" data-i18n-attr="aria-label:aria.fillColour"></span>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-preview">
+        <h2 id="h-preview" data-i18n="h.preview">Preview</h2>
+        <label class="srow"><span data-i18n="lbl.zoom">Zoom</span>
+          <input type="range" id="zoom" min="0.8" max="4" step="0.1" value="1.6">
+          <output id="zoom-val" class="mono">1.6 px/mm</output></label>
+        <label class="check"><input type="checkbox" id="heatmap"><span data-i18n="chk.heatmap">Stretch map (screen only)</span></label>
+        <div class="legend" id="heat-legend" hidden><span class="lg lg-good"></span>0%<span class="lg lg-warn"></span>2%<span class="lg lg-bad"></span>≥5%</div>
+      </section>
+
+      </div>
+      <div class="col">
+      <section class="sec" aria-labelledby="h-list">
+        <h2 id="h-list" data-i18n="h.list">Pieces list</h2>
+        <ul class="pieces" id="piece-list"></ul>
+        <ul class="warns" id="warn-list"></ul>
+      </section>
+      </div>
+    </div>
+
+    <footer class="side-foot">
+      <span class="foot-lock"><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><rect x="4" y="9" width="12" height="8.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.8 9V6.6a3.2 3.2 0 0 1 6.4 0V9" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <p><span data-i18n-html="privacy.short"><b>100% local.</b> Your 3D files never leave this device.</span>
+        <button type="button" class="link-btn" id="privacy-open" data-i18n="privacy.link">Privacy</button></p>
+    </footer>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="topbar">
+      <nav class="tabs" role="tablist" aria-label="Mode" data-i18n-attr="aria-label:aria.mode">
+        <button type="button" role="tab" id="tab-3d" aria-selected="true" aria-controls="view-3d"><span data-i18n="tab.3d">① Select surface (3D)</span></button>
+        <button type="button" role="tab" id="tab-2d" aria-selected="false" aria-controls="view-2d"><span data-i18n="tab.2d">② Print layout (2D)</span> <span class="badge" id="tab-2d-badge" hidden></span></button>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Language" data-i18n-attr="aria-label:aria.language">
+        <button type="button" class="lang-btn" id="lang-en" data-lang="en" aria-pressed="true" title="English">
+          <svg viewBox="0 0 60 30" width="22" height="11" aria-hidden="true"><clipPath id="flag-uk-s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="flag-uk-t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#flag-uk-s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#ffffff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#flag-uk-t)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#ffffff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>
+          <span>ENG</span></button>
+        <button type="button" class="lang-btn" id="lang-vi" data-lang="vi" aria-pressed="false" title="Tiếng Việt">
+          <svg viewBox="0 0 30 20" width="17" height="11" aria-hidden="true"><rect width="30" height="20" fill="#DA251D"/><polygon points="15,4 16.347,8.146 20.706,8.146 17.18,10.708 18.527,14.854 15,12.292 11.473,14.854 12.82,10.708 9.294,8.146 13.653,8.146" fill="#FFFF00"/></svg>
+          <span>VIE</span></button>
+      </div>
+    </div>
+    <div class="view view-3d" id="view-3d" role="tabpanel" aria-labelledby="tab-3d">
+      <div class="canvas-host" id="canvas-host"></div>
+      <div class="piece-labels" id="piece-labels" aria-hidden="true"></div>
+      <div class="viewbar" id="viewbar" role="group" aria-label="View" data-i18n-attr="aria-label:aria.view">
+        <button type="button" id="show-pieces" aria-pressed="false" hidden data-i18n="view.pieces">Show pieces</button>
+        <button type="button" data-view="front" data-i18n="view.front">Front</button>
+        <button type="button" data-view="back" data-i18n="view.back">Back</button>
+        <button type="button" data-view="left" data-i18n="view.left">Left</button>
+        <button type="button" data-view="right" data-i18n="view.right">Right</button>
+        <button type="button" data-view="top" data-i18n="view.top">Top</button>
+        <button type="button" data-view="bottom" data-i18n="view.bottom">Bottom</button>
+        <button type="button" data-view="fit" data-i18n="view.fit">Fit</button>
+      </div>
+      <div class="hud mono" id="hud" aria-live="off"></div>
+      <div class="gizmo" id="gizmo">
+        <canvas id="gizmo-canvas" role="img" aria-label="View cube: click a face, edge or corner to look from there; drag it to orbit" title="View cube: click a face, edge or corner to look from there; drag it to orbit" data-i18n-attr="aria-label:aria.cube;title:aria.cube"></canvas>
+        <button type="button" class="fit-btn" id="fit-btn" aria-label="Fit camera to the model" data-tip="Fit camera to the model" data-i18n-attr="aria-label:title.fit;data-tip:title.fit">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" fill="none" stroke="#3ddc84" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.6l4.6 2.5v5.8L12 17.4l-4.6-2.5V9.1zM7.4 9.1l4.6 2.5 4.6-2.5M12 11.6v5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="empty3d" id="empty-3d" hidden>
+        <p class="empty-title" data-i18n="empty3d.title">Drop an STL, OBJ, 3MF, PLY or GLB file here</p>
+        <p data-i18n="empty3d.sub">or use “Open 3D file…” on the left</p>
+      </div>
+      <div class="dropveil" id="drop-veil" hidden><span data-i18n="dropveil">Drop to open</span></div>
+    </div>
+    <div class="view view-2d" id="view-2d" role="tabpanel" aria-labelledby="tab-2d" hidden>
+      <div class="pages" id="pages"></div>
+      <div class="empty2d" id="empty-2d">
+        <p class="empty-title" data-i18n="empty2d.title">Nothing unwrapped yet</p>
+        <p data-i18n-html="empty2d.sub">Paint a surface in the 3D tab, then press <b>Unwrap · Generate</b>.</p>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<dialog class="modal" id="privacy-dialog" aria-labelledby="privacy-title">
+  <form method="dialog">
+    <h2 id="privacy-title"><span class="foot-lock"><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><rect x="4" y="9" width="12" height="8.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.8 9V6.6a3.2 3.2 0 0 1 6.4 0V9" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span> <span data-i18n="privacy.title">Privacy &amp; disclaimer</span></h2>
+    <div class="modal-body" data-i18n-html="privacy.body"></div>
+    <div class="modal-actions"><button type="submit" class="btn primary" value="close" data-i18n="btn.close">Close</button></div>
+  </form>
+</dialog>
