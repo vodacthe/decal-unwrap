@@ -2,7 +2,7 @@
 
 Paint a surface on your 3D model, press **Unwrap**, and get true-scale (1:1) 2D cut templates to print, cut out and stick on your 3D print — like a UV unwrap in Blender, but sized in millimetres for paper.
 
-**Open the app: https://vodacthe.github.io/decal-unwrap/**
+**Open the app: https://decal.vdthe.com/**
 
 - Opens STL, OBJ, 3MF, PLY and GLB files.
 - Paint tools: brush, fill (stops at sharp edges and raised ridges), erase, block (exclusion zone) and cut (mark your own slits).
@@ -24,7 +24,7 @@ In the print dialog choose **Scale 100% / Actual size** and turn **Fit to page o
 
 Tô vùng bề mặt trên mô hình 3D, bấm **Trải phẳng**, app tạo mẫu cắt 2D đúng tỉ lệ 1:1 để in, cắt và dán lên bản in 3D.
 
-- **Mở app:** https://vodacthe.github.io/decal-unwrap/
+- **Mở app:** https://decal.vdthe.com/
 - **Quyền riêng tư:** mọi xử lý đều chạy trong trình duyệt. File 3D không bao giờ bị tải lên máy chủ nào. Sau khi trang tải xong, app dùng được cả khi không có mạng.
 - **Khi in:** chọn Scale 100% (Actual size), tắt Fit to page, rồi đo thước 50 mm để kiểm tra.
 
