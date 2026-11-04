@@ -2168,12 +2168,39 @@ const Flat = (() => {
     if (s2 < 0) return [];
     c[1] = [N[3 * s2], N[3 * s2 + 1], N[3 * s2 + 2]];
     if (c[0][0] * c[1][0] + c[0][1] * c[1][1] + c[0][2] * c[1][2] > Math.cos((3 * PI) / 180)) return [];
+    // Flat patches (faces within 1° of the patch's first face) are labelled as
+    // one: a disc whose normal is equally far from both centres would otherwise
+    // be split by rounding noise (e.g. a tube's end cap cut into two halves).
+    const PN = Float64Array.from(N);
+    {
+      const seen = new Uint8Array(n), cosFlat = Math.cos(PI / 180), members = [];
+      for (let s = 0; s < n; s++) {
+        if (seen[s] || Q[s] < 0.1) continue;
+        const sx = N[3 * s], sy = N[3 * s + 1], sz = N[3 * s + 2];
+        members.length = 0;
+        seen[s] = 1; members.push(s);
+        let ax = 0, ay = 0, az = 0;
+        for (let h = 0; h < members.length; h++) {
+          const i = members[h];
+          ax += N[3 * i] * A[i]; ay += N[3 * i + 1] * A[i]; az += N[3 * i + 2] * A[i];
+          for (let k = 0; k < 3; k++) {
+            const j = ip[3 * i + k];
+            if (j < 0 || seen[j] || Q[j] < 0.1) continue;
+            if (N[3 * j] * sx + N[3 * j + 1] * sy + N[3 * j + 2] * sz < cosFlat) continue;
+            seen[j] = 1; members.push(j);
+          }
+        }
+        if (members.length < 2) continue;
+        const al = Math.hypot(ax, ay, az) || 1;
+        for (const i of members) { PN[3 * i] = ax / al; PN[3 * i + 1] = ay / al; PN[3 * i + 2] = az / al; }
+      }
+    }
     const label = new Uint8Array(n);
     for (let it = 0; it < 12; it++) {
       const acc = [[0, 0, 0], [0, 0, 0]];
       for (let i = 0; i < n; i++) {
-        const d0 = N[3 * i] * c[0][0] + N[3 * i + 1] * c[0][1] + N[3 * i + 2] * c[0][2];
-        const d1 = N[3 * i] * c[1][0] + N[3 * i + 1] * c[1][1] + N[3 * i + 2] * c[1][2];
+        const d0 = PN[3 * i] * c[0][0] + PN[3 * i + 1] * c[0][1] + PN[3 * i + 2] * c[0][2];
+        const d1 = PN[3 * i] * c[1][0] + PN[3 * i + 1] * c[1][1] + PN[3 * i + 2] * c[1][2];
         const l = d0 >= d1 ? 0 : 1;
         label[i] = l;
         if (Q[i] >= 0.1) { acc[l][0] += N[3 * i] * A[i]; acc[l][1] += N[3 * i + 1] * A[i]; acc[l][2] += N[3 * i + 2] * A[i]; }
@@ -2183,7 +2210,21 @@ const Flat = (() => {
         if (len > 0) c[l] = [acc[l][0] / len, acc[l][1] / len, acc[l][2] / len];
       }
     }
-    // connected parts of each cluster
+    return groupParts(mesh, fr, minArea, (i, j) => label[i] === label[j]);
+  }
+
+  // Split a closed shape along its sharp edges (dihedral ≥ 30°), so a tube
+  // comes apart into its end caps and one wall instead of normal clusters.
+  function splitBySharp(mesh, fr, minArea) {
+    const N = fr.N, Q = fr.Q, cosSharp = Math.cos((30 * PI) / 180);
+    return groupParts(mesh, fr, minArea, (i, j) => Q[i] < 0.1 || Q[j] < 0.1
+      || N[3 * i] * N[3 * j] + N[3 * i + 1] * N[3 * j + 1] + N[3 * i + 2] * N[3 * j + 2] >= cosSharp);
+  }
+
+  // Connected parts of faces linked by `joins(i, j)`; parts that are too small
+  // or too thin are merged into the neighbour they share the most edge with.
+  function groupParts(mesh, fr, minArea, joins) {
+    const n = mesh.n, A = fr.A, ip = mesh.ip;
     const comp = new Int32Array(n).fill(-1);
     const area = [];
     const queue = new Int32Array(n);
@@ -2197,7 +2238,7 @@ const Flat = (() => {
         a += A[i];
         for (let k = 0; k < 3; k++) {
           const j = ip[3 * i + k];
-          if (j >= 0 && comp[j] < 0 && label[j] === label[i]) { comp[j] = id; queue[qt++] = j; }
+          if (j >= 0 && comp[j] < 0 && joins(i, j)) { comp[j] = id; queue[qt++] = j; }
         }
       }
       area.push(a);
@@ -2334,6 +2375,19 @@ const Flat = (() => {
         let prep = prepare(model, ch.faces, faceLocal, cutFlag);
         let mesh = buildMesh(model, prep);
         let seams = 0;
+        const canSplit = tol < Infinity && ch.depth < 10 && ch.area >= 2 * minArea;
+        // A closed shape is opened by splitting it by face direction first (when
+        // pieces are allowed), so auto seams never run across a flat end cap.
+        if (canSplit && opts.autoSeam !== false && mesh.loops.length === 0) {
+          const fr0 = localFrames(mesh.P, mesh.F);
+          let parts = splitBySharp(mesh, fr0, minArea);
+          if (parts.length < 2) parts = splitChart(mesh, fr0, minArea);
+          if (parts.length >= 2) {
+            for (const p of parts) stack.push({ faces: p.faces, depth: ch.depth + 1, area: p.area });
+            await tick();
+            continue;
+          }
+        }
         if (opts.autoSeam !== false) {
           for (let pass = 0; pass < 3; pass++) {
             const c = planSeams(mesh, cutFlag);
@@ -2345,7 +2399,6 @@ const Flat = (() => {
           }
         }
         if (mesh.nV < 3) { doneArea += ch.area; continue; }
-        const canSplit = tol < Infinity && ch.depth < 10 && ch.area >= 2 * minArea;
         const probe = canSplit ? Math.min(25, full) : full;
         const res = await flattenMesh(mesh, opts, tick, report, probe);
         let dist = distortion(res.uv, mesh.F, res.fr);
