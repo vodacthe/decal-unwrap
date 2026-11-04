@@ -8,6 +8,9 @@ Paint a surface on your 3D model, press **Unwrap**, and get true-scale (1:1) 2D 
 - Paint tools: brush, fill (stops at sharp edges and raised ridges), erase, block (exclusion zone) and cut (mark your own slits).
 - Splits the surface into low-stretch pieces, nests them on A2–A6, Letter, Legal, Tabloid or a custom size, and cuts pieces that are too long for the paper.
 - Exports print, PDF, SVG (for cutting machines) and DXF.
+- Artwork on the decals: your own images or built-in carbon, leather, metal and wood textures, with bleed past the cut line.
+- Seam alignment marks and optional glue tabs, so pieces line up.
+- Save and open whole projects (.decal files).
 - English and Vietnamese.
 
 ## Privacy
