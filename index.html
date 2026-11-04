@@ -2360,6 +2360,22 @@ const Flat = (() => {
     const out = [];
     let stretched = 0, folded = 0, closed = 0, torus = 0, huge = 0, slivers = 0;
     const total = comps.length;
+    // A split is only worth it if the parts really flatten better. Stretch that
+    // sits in a few small spots (rounded corners, fillets) stays whatever way
+    // the chart is cut, and splitting would only chop a clean strip into
+    // uneven pieces. Parts that are not plain discs cannot be judged here and
+    // are trusted to be split further later.
+    async function splitHelps(parts, parentMax) {
+      let worst = 0;
+      for (const p of parts) {
+        const pm = buildMesh(model, prepare(model, p.faces, faceLocal, cutFlag));
+        if (pm.nV < 3) continue;
+        if (pm.loops.length !== 1 || pm.genus > 0) return true;
+        const r = await flattenMesh(pm, opts, tick, () => {}, Math.min(25, full));
+        worst = Math.max(worst, distortion(r.uv, pm.F, r.fr).max);
+      }
+      return worst < parentMax * 0.7;
+    }
     for (let ci = 0; ci < total; ci++) {
       const comp = comps[ci];
       const minArea = Math.max(20, comp.area * 0.003);
@@ -2404,7 +2420,7 @@ const Flat = (() => {
         let dist = distortion(res.uv, mesh.F, res.fr);
         if (canSplit && dist.max > tol) {
           const parts = splitChart(mesh, res.fr, minArea);
-          if (parts.length >= 2) {
+          if (parts.length >= 2 && await splitHelps(parts, dist.max)) {
             for (const p of parts) stack.push({ faces: p.faces, depth: ch.depth + 1, area: p.area });
             await tick();
             continue;
