@@ -75,6 +75,38 @@ for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) scan[y * sw + x] = ink
 const sc = Scan.detectPaper(scan, sw, sh);
 check('full-page scan uses the image corners', sc[0][0] === 0 && sc[2][0] === sw - 1, JSON.stringify(sc));
 
+// auto mode on the line drawing picks "outline"
+check('auto mode: pen lines -> outline', Scan.extract(gray, PW, PH, found, [210, 297], { minArea: 20 }).mode === 'outline');
+
+// A full-page scan of two big filled shapes (red marker, like a real test sheet):
+// two halves 20 × 59.55 mm with a 1.5 mm gap. Auto must pick "filled" and keep the size.
+const fw = 1050, fh = 1485, fsc = new Float32Array(fw * fh); // 5 px/mm
+const inHalf = (x, y) => y > 120 && y < 120 + 59.55 && ((x > 40 && x < 60) || (x > 61.5 && x < 81.5));
+for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) fsc[y * fw + x] = (inHalf(x / 5, y / 5) ? 62 : 238) * (0.85 + 0.15 * (y / fh));
+const fc = Scan.detectPaper(fsc, fw, fh);
+const fr = Scan.extract(fsc, fw, fh, fc, [210, 297], { minArea: 20 });
+check('auto mode: big filled areas -> filled', fr.mode === 'filled', fr.mode);
+check('both filled halves found', fr.shapes.length === 2, `${fr.shapes.length} shapes`);
+const fb = fr.shapes.map((q) => bb(q.outer));
+check('filled height kept at 1:1 (59.55 mm)', fb.length === 2 && fb.every(([, , , hh]) => Math.abs(hh - 59.55) < 0.6), fb.map((q) => `${q[2].toFixed(2)} × ${q[3].toFixed(2)}`).join(', '));
+check('filled shapes are solid (no holes)', fr.shapes.every((q) => q.holes.length === 0));
+
+// the same sheet scanned soft: edges blurred over ~2 mm (low resolution and
+// compression) plus a faint grey smear under the shape, as on a real scan
+const blurred = Float32Array.from(fsc, (v, i) => {
+  const x = (i % fw) / 5, y = ((i / fw) | 0) / 5;
+  return x > 38 && x < 84 && y > 180 && y < 188 ? Math.min(v, 215) : v; // smear just below
+});
+for (let pass = 0; pass < 3; pass++) {
+  const R = 3, tmp = new Float32Array(blurred.length);
+  for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) { let s = 0, n = 0; for (let k = -R; k <= R; k++) { const xx = x + k; if (xx >= 0 && xx < fw) { s += blurred[y * fw + xx]; n++; } } tmp[y * fw + x] = s / n; }
+  for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) { let s = 0, n = 0; for (let k = -R; k <= R; k++) { const yy = y + k; if (yy >= 0 && yy < fh) { s += tmp[yy * fw + x]; n++; } } blurred[y * fw + x] = s / n; }
+}
+const br = Scan.extract(blurred, fw, fh, fc, [210, 297], { minArea: 20 });
+const bbs = br.shapes.map((q) => bb(q.outer));
+check('soft scan: height still 59.55 ± 0.4 mm', bbs.length === 2 && bbs.every(([, , , hh]) => Math.abs(hh - 59.55) < 0.4), bbs.map((q) => `${q[2].toFixed(2)} × ${q[3].toFixed(2)}`).join(', '));
+check('soft scan: width 20 ± 0.4 mm', bbs.length === 2 && bbs.every(([, , ww]) => Math.abs(ww - 20) < 0.4));
+
 const stl = Scan.toSTL(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
 check('binary STL', stl.byteLength === 134 && new DataView(stl).getUint32(80, true) === 1);
 

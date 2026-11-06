@@ -139,6 +139,18 @@
       'msg.scanOpened': 'Made a 3D plate from {n} shape(s) at 1:1.',
       'btn.modelStl': 'Download STL',
       'title.modelStl': 'Download the open model as STL (mm)',
+      'view.dims': 'Size',
+      'title.dims': 'Show the model\'s length, width and height in mm',
+      'view.measure': 'Measure',
+      'title.measure': 'Click two points on the model to measure the distance (snaps to corners). Esc clears.',
+      'dims.grid': 'grid square = 10 mm',
+      'msg.measureHint': 'Click two points on the model. Points near a corner snap to it; Esc clears.',
+      'msg.measured': 'Distance: {d}',
+      'scan.realW': 'True width mm',
+      'scan.realH': 'True height mm',
+      'title.scanReal': 'Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match',
+      'scan.corrected': '(measured {w} × {h}, scaled ×{fx} / ×{fy})',
+      'scan.auto': 'Auto',
       'aria.controls': 'Controls', 'aria.mode': 'Mode', 'aria.language': 'Language', 'aria.view': 'View',
       'tab.3d': '① Select surface (3D)', 'tab.2d': '② Print layout (2D)',
       'view.pieces': 'Show pieces', 'view.front': 'Front', 'view.back': 'Back', 'view.left': 'Left', 'view.right': 'Right',
@@ -299,6 +311,18 @@
       'msg.scanOpened': 'Đã tạo tấm 3D từ {n} hình, đúng tỉ lệ 1:1.',
       'btn.modelStl': 'Tải STL',
       'title.modelStl': 'Tải mô hình đang mở dưới dạng STL (mm)',
+      'view.dims': 'Kích thước',
+      'title.dims': 'Hiện chiều dài, rộng, cao của mô hình theo mm',
+      'view.measure': 'Đo',
+      'title.measure': 'Bấm 2 điểm trên mô hình để đo khoảng cách (tự bắt vào góc). Esc để xóa.',
+      'dims.grid': '1 ô lưới = 10 mm',
+      'msg.measureHint': 'Bấm 2 điểm trên mô hình. Điểm gần góc sẽ tự bắt vào góc; Esc để xóa.',
+      'msg.measured': 'Khoảng cách: {d}',
+      'scan.realW': 'Rộng thật mm',
+      'scan.realH': 'Cao thật mm',
+      'title.scanReal': 'Đo vật thật thấy lệch? Nhập chiều rộng và/hoặc chiều cao thật; kết quả sẽ được co giãn cho khớp',
+      'scan.corrected': '(đo được {w} × {h}, đã chỉnh ×{fx} / ×{fy})',
+      'scan.auto': 'Tự động',
       'aria.controls': 'Bảng điều khiển', 'aria.mode': 'Chế độ', 'aria.language': 'Ngôn ngữ', 'aria.view': 'Góc nhìn',
       'tab.3d': '① Chọn bề mặt (3D)', 'tab.2d': '② Bản in (2D)',
       'view.pieces': 'Hiện mảnh', 'view.front': 'Trước', 'view.back': 'Sau', 'view.left': 'Trái', 'view.right': 'Phải',
@@ -401,7 +425,7 @@
   const rim = new THREE.DirectionalLight(0xffffff, 0.6);
   scene.add(rim);
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
-  let grid = null;
+  let grid = null, gridSize = 0;
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.9, 1, 64),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }),
@@ -443,6 +467,7 @@
     flushColors();
     renderer.render(scene, camera);
     placePieceTags();
+    drawOverlay();
     renderGizmo();
   });
 
@@ -638,6 +663,7 @@
     if (!state.model) return;
     const s = state.model.bbox.size;
     const size = Math.max(20, Math.ceil((Math.max(s[0], s[2]) * 1.6) / 10) * 10);
+    gridSize = size;
     grid = new THREE.GridHelper(size, Math.round(size / 10), new THREE.Color(cssVar('--grid-major')), new THREE.Color(cssVar('--grid-minor')));
     grid.position.y = -0.01;
     scene.add(grid);
@@ -677,6 +703,7 @@
     updateCounts();
     $('empty-3d').hidden = true;
     state.pieces = null; state.layout = null;
+    measurePts = [];
     clearPieceView();
     showPreview([]);
     rebuildSeamLines();
@@ -738,6 +765,82 @@
       }
     }
   }
+
+  // ------------------------------------------------- size and measuring ----
+  // An SVG layer over the 3D view: the model's bounding sizes in mm, and a
+  // two-point measurement, so a scanned plate can be checked against the paper.
+  const overlay = $('overlay-3d');
+  let showDims = false, measuring = false, measurePts = [];
+  const projV = new THREE.Vector3();
+  function toScreen(p) {
+    projV.copy(p).project(camera);
+    return { x: ((projV.x + 1) / 2) * host.clientWidth, y: ((1 - projV.y) / 2) * host.clientHeight, ok: projV.z < 1 };
+  }
+  const fmtMm = (v) => `${v >= 100 ? v.toFixed(1) : v.toFixed(2)} mm`;
+  // a dimension line between two 3D points with end ticks and a centred label
+  function dimSvg(a, b, text, cls) {
+    const p = toScreen(a), q = toScreen(b);
+    if (!p.ok || !q.ok) return '';
+    const dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy) || 1, nx = (-dy / l) * 5, ny = (dx / l) * 5;
+    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    return `<g class="${cls}"><line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}"/>`
+      + `<line x1="${p.x - nx}" y1="${p.y - ny}" x2="${p.x + nx}" y2="${p.y + ny}"/><line x1="${q.x - nx}" y1="${q.y - ny}" x2="${q.x + nx}" y2="${q.y + ny}"/>`
+      + `<text x="${mx}" y="${my - 6}">${text}</text></g>`;
+  }
+  function drawOverlay() {
+    if (currentTab !== '3d' || !state.model || (!showDims && !measurePts.length)) { if (overlay.innerHTML) overlay.innerHTML = ''; return; }
+    let svg = '';
+    if (showDims) {
+      const b = state.model.bbox, mn = new THREE.Vector3(...b.min), mx = new THREE.Vector3(...b.max), s = b.size;
+      const o = Math.max(2, b.diag * 0.05);
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      svg += dimSvg(V(mn.x, mn.y, mx.z + o), V(mx.x, mn.y, mx.z + o), fmtMm(s[0]), 'dim');
+      svg += dimSvg(V(mx.x + o, mn.y, mn.z), V(mx.x + o, mn.y, mx.z), fmtMm(s[2]), 'dim');
+      svg += dimSvg(V(mx.x + o, mn.y, mx.z + o), V(mx.x + o, mx.y, mx.z + o), fmtMm(s[1]), 'dim');
+      if (gridSize) {
+        const g = toScreen(V(-gridSize / 2, 0, gridSize / 2));
+        if (g.ok) svg += `<text class="grid-note" x="${g.x + 6}" y="${g.y + 16}">${i18n('dims.grid')}</text>`;
+      }
+    }
+    if (measurePts.length) {
+      const [a, b] = measurePts;
+      for (const p of measurePts) { const q = toScreen(p); if (q.ok) svg += `<circle class="mpt" cx="${q.x}" cy="${q.y}" r="4"/>`; }
+      if (b) svg += dimSvg(a, b, fmtMm(a.distanceTo(b)), 'measure');
+    }
+    overlay.innerHTML = svg;
+  }
+  // the clicked surface point, or the closest visible model corner within 12 px on screen
+  function measureClick(e) {
+    const hit = pick(e.clientX, e.clientY);
+    if (!hit) return;
+    let p = hit.point.clone();
+    const m = state.model, rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    const hitDist = hit.point.distanceTo(camera.position), tol = m.bbox.diag * 0.01;
+    const vp = new THREE.Vector3();
+    let best = 12;
+    for (let v = 0; v < m.nV; v++) {
+      vp.set(m.pos[3 * v], m.pos[3 * v + 1], m.pos[3 * v + 2]);
+      // skip corners hidden behind the surface that was clicked
+      if (vp.distanceTo(camera.position) > hitDist + tol) continue;
+      const s = toScreen(vp);
+      const d = Math.hypot(s.x - cx, s.y - cy);
+      if (d < best) { best = d; p = vp.clone(); }
+    }
+    measurePts = measurePts.length >= 2 ? [p] : [...measurePts, p];
+    if (measurePts.length === 2) toast(i18n('msg.measured', { d: fmtMm(measurePts[0].distanceTo(measurePts[1])) }));
+  }
+  function setDims(on) { showDims = !!on; $('show-dims').setAttribute('aria-pressed', String(showDims)); }
+  function setMeasuring(on) {
+    measuring = !!on;
+    if (!measuring) measurePts = [];
+    $('measure').setAttribute('aria-pressed', String(measuring));
+    applyControlMode();
+    if (measuring) toast(i18n('msg.measureHint'));
+  }
+  $('show-dims').addEventListener('click', () => setDims(!showDims));
+  $('measure').addEventListener('click', () => setMeasuring(!measuring));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && measuring && measurePts.length) measurePts = []; });
 
   // ---------------------------------------------------------------- views ---
   // Frame the whole model, looking from a named view, from a direction vector,
@@ -1478,18 +1581,19 @@
   function paintTool() { return state.tool !== 'orbit' && !spaceDown; }
 
   function applyControlMode() {
-    const orbitLeft = !paintTool();
+    const orbitLeft = !paintTool() && !measuring;
     controls.mouseButtons = orbitLeft
       ? { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
       : { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     controls.touches = orbitLeft
       ? { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }
       : { ONE: null, TWO: THREE.TOUCH.DOLLY_PAN };
-    canvas.style.cursor = orbitLeft ? 'grab' : (state.tool === 'fill' ? 'cell' : 'crosshair');
+    canvas.style.cursor = orbitLeft ? 'grab' : (measuring || state.tool !== 'fill' ? 'crosshair' : 'cell');
     updateHud();
   }
 
   function updateCursor(hit) {
+    if (measuring) { ring.visible = false; dot.visible = false; return; }
     const pointTool = state.tool === 'fill' || state.tool === 'cut';
     const showRing = hit && paintTool() && !pointTool;
     ring.visible = !!showRing;
@@ -1511,6 +1615,7 @@
   let shiftDown = false, strokeBlock = null;
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointerdown', (e) => {
+    if (measuring && state.model && !spaceDown && (e.pointerType !== 'mouse' || e.button === 0)) { measureClick(e); return; }
     if (e.pointerType === 'touch') {
       touches.add(e.pointerId);
       if (touches.size > 1) { painting = false; return; }
@@ -2221,6 +2326,10 @@
   // the drawn shapes, extruded at 1:1.
   const scanDlg = $('scan-dialog');
   const scan = { gray: null, w: 0, h: 0, bmp: null, corners: null, res: null, shapes: [], tris: null, drag: -1, timer: 0 };
+  // A4 portrait / auto is always the starting point (browsers may restore an old choice)
+  $('scan-paper').value = 'A4';
+  $('scan-orient').value = 'auto';
+  $('scan-mode').value = 'auto';
 
   function scanPaperSize() {
     const [pw, ph] = Scan.PAPERS[$('scan-paper').value] || Scan.PAPERS.A4;
@@ -2300,6 +2409,20 @@
       } catch (e) { scan.res = null; }
       const half = scan.res && scan.res.stroke ? scan.res.stroke / 2 : 0;
       scan.shapes = scan.res ? scan.res.shapes.flatMap((s) => scanOffset(s, half)) : [];
+      // optional correction to measured true sizes (x and y separately)
+      scan.measured = null; scan.factor = [1, 1];
+      if (scan.shapes.length) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const sh of scan.shapes) for (let i = 0; i < sh.outer.length; i += 2) { x0 = Math.min(x0, sh.outer[i]); x1 = Math.max(x1, sh.outer[i]); y0 = Math.min(y0, sh.outer[i + 1]); y1 = Math.max(y1, sh.outer[i + 1]); }
+        const mw = x1 - x0, mh = y1 - y0, rw = Number($('scan-realw').value) || 0, rh = Number($('scan-realh').value) || 0;
+        scan.measured = [mw, mh];
+        const fx = rw > 0 ? rw / mw : rh > 0 ? rh / mh : 1, fy = rh > 0 ? rh / mh : fx;
+        if (fx !== 1 || fy !== 1) {
+          scan.factor = [fx, fy];
+          const sc = (r) => r.map((v, i) => (i % 2 ? y0 + (v - y0) * fy : x0 + (v - x0) * fx));
+          scan.shapes = scan.shapes.map((sh) => ({ outer: sc(sh.outer), holes: sh.holes.map(sc) }));
+        }
+      }
       scan.tris = scan.shapes.length ? scanTriangles(scan.shapes, Math.max(0.4, Number($('scan-thick').value) || 3)) : null;
       drawScanResult();
     }, 120);
@@ -2345,8 +2468,11 @@
     g.strokeStyle = '#2f6fed'; g.lineWidth = 1.5; g.stroke();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const sh of scan.shapes) for (let i = 0; i < sh.outer.length; i += 2) { x0 = Math.min(x0, sh.outer[i]); x1 = Math.max(x1, sh.outer[i]); y0 = Math.min(y0, sh.outer[i + 1]); y1 = Math.max(y1, sh.outer[i + 1]); }
+    const corr = scan.factor && (scan.factor[0] !== 1 || scan.factor[1] !== 1)
+      ? ' ' + i18n('scan.corrected', { w: scan.measured[0].toFixed(1), h: scan.measured[1].toFixed(1), fx: scan.factor[0].toFixed(4), fy: scan.factor[1].toFixed(4) })
+      : '';
     $('scan-stats').textContent = scan.shapes.length
-      ? i18n('scan.stats', { n: scan.shapes.length, w: (x1 - x0).toFixed(1), h: (y1 - y0).toFixed(1), pen: r.stroke ? r.stroke.toFixed(1) : '–' })
+      ? `${$('scan-paper').value} ${i18n(r.W > r.H ? 'orient.landscape' : 'orient.portrait')} · ${$('scan-mode').value === 'auto' ? i18n(r.mode === 'filled' ? 'scan.filled' : 'scan.outline') + ' · ' : ''}` + i18n('scan.stats', { n: scan.shapes.length, w: (x1 - x0).toFixed(1), h: (y1 - y0).toFixed(1), pen: r.stroke ? r.stroke.toFixed(1) : '–' }) + corr
       : i18n('scan.nothing');
   }
 
@@ -2410,7 +2536,7 @@
   });
   $('scan-cancel').addEventListener('click', () => scanDlg.close());
   $('scan-input').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) scanLoad(f); });
-  for (const id of ['scan-paper', 'scan-orient', 'scan-mode', 'scan-sens', 'scan-thick', 'scan-min']) $(id).addEventListener('input', runScan);
+  for (const id of ['scan-paper', 'scan-orient', 'scan-mode', 'scan-sens', 'scan-thick', 'scan-min', 'scan-realw', 'scan-realh']) $(id).addEventListener('input', runScan);
   const scanName = () => `scan-${$('scan-paper').value}`;
   $('scan-stl').addEventListener('click', async () => {
     if (!scan.tris) return;
@@ -2421,8 +2547,9 @@
     state.unitScale = 1;
     $('unit').value = '1';
     loadRaw(scan.tris, `${scanName()}.stl`, 'z', false);
-    // a flat plate: look at it from above and a little in front
+    // a flat plate: look at it from above and a little in front, sizes shown for checking
     fitView(new THREE.Vector3(0, 1, 0.6), false);
+    setDims(true);
     scanDlg.close();
     switchTab('3d');
     toast(i18n('msg.scanOpened', { n: scan.shapes.length }));

@@ -124,15 +124,26 @@ const Scan = (() => {
     return out;
   }
 
-  // Ink = noticeably darker than the paper around it (local mean over ~12 mm),
-  // so shadows and uneven light do not count. A band along the sheet edge is ignored.
-  function inkMask(img, W, H, ppm, sensitivity, borderMm) {
+  // Ink = noticeably darker than the paper around it, so shadows and uneven
+  // light do not count. The paper brightness is a wide local average taken
+  // with the ink itself replaced by plain paper, so the middle of a large
+  // filled area is still seen as ink. A band along the sheet edge is ignored.
+  // With inkLevel (filled drawings) the edge is put half-way between the local
+  // paper and the ink, where a blurred or compressed edge really is.
+  function inkMask(img, W, H, ppm, sensitivity, borderMm, inkLevel) {
+    const bd = Math.round(borderMm * ppm);
+    const inner = [];
+    for (let y = bd; y < H - bd; y += 2) for (let x = bd; x < W - bd; x += 2) inner.push(img[y * W + x]);
+    const th = otsu(inner);
+    let ps = 0, pn = 0;
+    for (const v of inner) if (v > th) { ps += v; pn++; }
+    const paper = pn ? ps / pn : 255;
     const I = new Float64Array((W + 1) * (H + 1));
     for (let y = 0; y < H; y++) {
       let row = 0;
-      for (let x = 0; x < W; x++) { row += img[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row; }
+      for (let x = 0; x < W; x++) { const v = img[y * W + x]; row += v > th ? v : paper; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row; }
     }
-    const R = Math.max(4, Math.round(6 * ppm)), bd = Math.round(borderMm * ppm);
+    const R = Math.max(6, Math.round(15 * ppm));
     const k = Math.max(0.05, Math.min(0.6, sensitivity));
     const m = new Uint8Array(W * H);
     for (let y = bd; y < H - bd; y++) {
@@ -141,7 +152,8 @@ const Scan = (() => {
         const x0 = Math.max(0, x - R), x1 = Math.min(W, x + R + 1);
         const s = I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0];
         const mean = s / ((x1 - x0) * (y1 - y0));
-        if (img[y * W + x] < mean * (1 - k)) m[y * W + x] = 1;
+        const cut = inkLevel === undefined ? mean * (1 - k) : Math.min(mean * 0.95, (mean + inkLevel) / 2);
+        if (img[y * W + x] < cut) m[y * W + x] = 1;
       }
     }
     return m;
@@ -325,8 +337,23 @@ const Scan = (() => {
     const ppm = opts.ppm || 5;
     const W = Math.round(paper[0] * ppm), Hh = Math.round(paper[1] * ppm);
     const rect = warp(gray, w, h, corners, W, Hh);
-    const ink = inkMask(rect, W, Hh, ppm, opts.sensitivity === undefined ? 0.22 : opts.sensitivity, opts.border === undefined ? 4 : opts.border);
-    const mode = opts.mode === 'filled' ? 'filled' : 'outline';
+    const sens = opts.sensitivity === undefined ? 0.22 : opts.sensitivity, border = opts.border === undefined ? 4 : opts.border;
+    let ink = inkMask(rect, W, Hh, ppm, sens, border);
+    // auto: pen lines are thin; anything wider than 2 mm is a filled drawing
+    const width = strokeWidth(ink, W, Hh, ppm);
+    const mode = opts.mode === 'filled' || opts.mode === 'outline' ? opts.mode : width > 2 ? 'filled' : 'outline';
+    if (mode === 'filled') {
+      // the ink's own darkness: median of pixels well inside the found ink
+      const core = [];
+      for (let y = 2; y < Hh - 2; y++) for (let x = 2; x < W - 2; x++) {
+        const p = y * W + x;
+        if (ink[p] && ink[p - 2] && ink[p + 2] && ink[p - 2 * W] && ink[p + 2 * W]) core.push(rect[p]);
+      }
+      if (core.length > 50) {
+        core.sort((a, b) => a - b);
+        ink = inkMask(rect, W, Hh, ppm, sens, border, core[core.length >> 1]);
+      }
+    }
     const mat = materialMask(ink, W, Hh, mode);
     const loops = traceContours(mat, W, Hh).map((r) => simplify(r, 0.7).map((v) => v / ppm));
     const minArea = opts.minArea === undefined ? 20 : opts.minArea;
@@ -342,8 +369,8 @@ const Scan = (() => {
       for (const o of outers) if (insideRing(o.outer, hl.r[0], hl.r[1]) && (!best || o.area < best.area)) best = o;
       if (best) best.holes.push(hl.r);
     }
-    const stroke = mode === 'outline' ? strokeWidth(ink, W, Hh, ppm) : 0;
-    return { shapes: outers, rect, ink, material: mat, W, H: Hh, ppm, stroke };
+    const stroke = mode === 'outline' ? width : 0;
+    return { shapes: outers, rect, ink, material: mat, W, H: Hh, ppm, stroke, mode };
   }
 
   // The closest paper size for a quad, given its rough aspect ratio

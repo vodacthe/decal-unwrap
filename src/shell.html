@@ -343,6 +343,8 @@
       <div class="piece-labels" id="piece-labels" aria-hidden="true"></div>
       <div class="viewbar" id="viewbar" role="group" aria-label="View" data-i18n-attr="aria-label:aria.view">
         <button type="button" id="show-pieces" aria-pressed="false" hidden data-i18n="view.pieces">Show pieces</button>
+        <button type="button" id="show-dims" aria-pressed="false" title="Show the model's length, width and height in mm" data-i18n="view.dims" data-i18n-attr="title:title.dims">Size</button>
+        <button type="button" id="measure" aria-pressed="false" title="Click two points on the model to measure the distance (snaps to corners). Esc clears." data-i18n="view.measure" data-i18n-attr="title:title.measure">Measure</button>
         <button type="button" data-view="front" data-i18n="view.front">Front</button>
         <button type="button" data-view="back" data-i18n="view.back">Back</button>
         <button type="button" data-view="left" data-i18n="view.left">Left</button>
@@ -351,6 +353,7 @@
         <button type="button" data-view="bottom" data-i18n="view.bottom">Bottom</button>
         <button type="button" data-view="fit" data-i18n="view.fit">Fit</button>
       </div>
+      <svg class="overlay-3d" id="overlay-3d" aria-hidden="true"></svg>
       <div class="hud mono" id="hud" aria-live="off"></div>
       <div class="gizmo" id="gizmo">
         <canvas id="gizmo-canvas" role="img" aria-label="View cube: click a face, edge or corner to look from there; drag it to orbit" title="View cube: click a face, edge or corner to look from there; drag it to orbit" data-i18n-attr="aria-label:aria.cube;title:aria.cube"></canvas>
@@ -388,11 +391,11 @@
     <div class="scan-row">
       <label class="btn sm primary" id="scan-pick"><input type="file" id="scan-input" accept="image/*" hidden><span data-i18n="scan.pick">Choose image…</span></label>
       <label class="inl"><span data-i18n="lbl.paper">Paper</span>
-        <select id="scan-paper"><option>A3</option><option selected>A4</option><option>A5</option><option>A6</option><option>B5</option><option>Letter</option><option>Legal</option></select></label>
-      <select id="scan-orient" aria-label="Orientation" data-i18n-attr="aria-label:lbl.orientation">
+        <select id="scan-paper" autocomplete="off"><option>A3</option><option selected>A4</option><option>A5</option><option>A6</option><option>B5</option><option>Letter</option><option>Legal</option></select></label>
+      <select id="scan-orient" autocomplete="off" aria-label="Orientation" data-i18n-attr="aria-label:lbl.orientation">
         <option value="auto" data-i18n="opt.auto">Auto</option><option value="portrait" data-i18n="opt.portrait">Portrait</option><option value="landscape" data-i18n="opt.landscape">Landscape</option></select>
       <label class="inl"><span data-i18n="scan.mode">Drawing</span>
-        <select id="scan-mode"><option value="outline" data-i18n="scan.outline">Outline</option><option value="filled" data-i18n="scan.filled">Filled shapes</option></select></label>
+        <select id="scan-mode" autocomplete="off"><option value="auto" selected data-i18n="scan.auto">Auto</option><option value="outline" data-i18n="scan.outline">Outline</option><option value="filled" data-i18n="scan.filled">Filled shapes</option></select></label>
     </div>
     <div class="scan-views">
       <figure><canvas id="scan-photo" width="480" height="360"></canvas><figcaption data-i18n="scan.corners">Drag the dots onto the corners of the sheet</figcaption></figure>
@@ -401,6 +404,8 @@
     <div class="scan-row">
       <label class="inl" title="Higher picks up fainter lines (and more smudges)" data-i18n-attr="title:title.scanSens"><span data-i18n="scan.sens">Sensitivity</span><input type="range" id="scan-sens" min="5" max="50" step="1" value="22"></label>
       <label class="inl"><span data-i18n="scan.thick">Thickness mm</span><input type="number" id="scan-thick" min="0.4" max="50" step="0.2" value="3"></label>
+      <label class="inl" title="Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match" data-i18n-attr="title:title.scanReal"><span data-i18n="scan.realW">True width mm</span><input type="number" id="scan-realw" min="1" max="2000" step="0.1" placeholder="—"></label>
+      <label class="inl" title="Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match" data-i18n-attr="title:title.scanReal"><span data-i18n="scan.realH">True height mm</span><input type="number" id="scan-realh" min="1" max="2000" step="0.1" placeholder="—"></label>
       <label class="inl" title="Marks smaller than this are ignored (mm²)" data-i18n-attr="title:title.scanMin"><span data-i18n="scan.min">Ignore below mm²</span><input type="number" id="scan-min" min="0" max="5000" step="5" value="20"></label>
     </div>
     <div class="modal-actions">
