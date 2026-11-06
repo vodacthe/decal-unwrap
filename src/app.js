@@ -117,6 +117,26 @@
       'tex.wood2': 'Wood 2',
       'tex.wood3': 'Wood 3',
       'tex.wood4': 'Wood 4',
+      'btn.scan': 'Scan paper → 3D…',
+      'title.scan': 'Photograph or scan a drawing on paper and turn it into a 3D plate at 1:1',
+      'scan.title': 'Scan paper → 3D',
+      'scan.hint': 'Draw or trace the shape with a dark pen. Scan the page, or photograph the <b>whole sheet</b> on a dark surface. A closed line is the edge of the part; a closed line inside it becomes a hole. You can also <b>paste</b> an image (Ctrl+V) or <b>drop</b> it here.',
+      'scan.pick': 'Choose image…',
+      'scan.mode': 'Drawing',
+      'scan.outline': 'Outline',
+      'scan.filled': 'Filled shapes',
+      'scan.corners': 'Drag the dots onto the corners of the sheet',
+      'scan.none': 'No image yet',
+      'scan.nothing': 'No closed shape found. Check the corners, the paper size or the sensitivity.',
+      'scan.stats': '{n} shape(s) · {w} × {h} mm · pen {pen} mm',
+      'scan.sens': 'Sensitivity',
+      'title.scanSens': 'Higher picks up fainter lines (and more smudges)',
+      'scan.thick': 'Thickness mm',
+      'scan.min': 'Ignore below mm²',
+      'title.scanMin': 'Marks smaller than this are ignored (mm²)',
+      'scan.stl': 'Download STL',
+      'scan.use': 'Open in 3D',
+      'msg.scanOpened': 'Made a 3D plate from {n} shape(s) at 1:1.',
       'aria.controls': 'Controls', 'aria.mode': 'Mode', 'aria.language': 'Language', 'aria.view': 'View',
       'tab.3d': '① Select surface (3D)', 'tab.2d': '② Print layout (2D)',
       'view.pieces': 'Show pieces', 'view.front': 'Front', 'view.back': 'Back', 'view.left': 'Left', 'view.right': 'Right',
@@ -255,6 +275,26 @@
       'tex.wood2': 'Gỗ 2',
       'tex.wood3': 'Gỗ 3',
       'tex.wood4': 'Gỗ 4',
+      'btn.scan': 'Scan giấy → 3D…',
+      'title.scan': 'Chụp hoặc scan hình vẽ trên giấy và biến thành tấm 3D đúng tỉ lệ 1:1',
+      'scan.title': 'Scan giấy → 3D',
+      'scan.hint': 'Vẽ hoặc đồ viền hình bằng bút đậm màu. Scan cả trang, hoặc chụp <b>trọn tờ giấy</b> đặt trên mặt bàn tối màu. Đường khép kín là mép của chi tiết; đường khép kín nằm bên trong sẽ thành lỗ. Bạn cũng có thể <b>dán</b> ảnh (Ctrl+V) hoặc <b>kéo thả</b> ảnh vào đây.',
+      'scan.pick': 'Chọn ảnh…',
+      'scan.mode': 'Kiểu vẽ',
+      'scan.outline': 'Đồ viền',
+      'scan.filled': 'Tô kín',
+      'scan.corners': 'Kéo các chấm vào đúng 4 góc tờ giấy',
+      'scan.none': 'Chưa có ảnh',
+      'scan.nothing': 'Chưa thấy hình khép kín nào. Kiểm tra 4 góc, khổ giấy hoặc độ nhạy.',
+      'scan.stats': '{n} hình · {w} × {h} mm · nét bút {pen} mm',
+      'scan.sens': 'Độ nhạy',
+      'title.scanSens': 'Cao hơn thì bắt được nét mờ (nhưng cũng dễ dính vết bẩn)',
+      'scan.thick': 'Độ dày mm',
+      'scan.min': 'Bỏ qua dưới mm²',
+      'title.scanMin': 'Vết nhỏ hơn diện tích này (mm²) sẽ bị bỏ qua',
+      'scan.stl': 'Tải STL',
+      'scan.use': 'Mở trong 3D',
+      'msg.scanOpened': 'Đã tạo tấm 3D từ {n} hình, đúng tỉ lệ 1:1.',
       'aria.controls': 'Bảng điều khiển', 'aria.mode': 'Chế độ', 'aria.language': 'Ngôn ngữ', 'aria.view': 'Góc nhìn',
       'tab.3d': '① Chọn bề mặt (3D)', 'tab.2d': '② Bản in (2D)',
       'view.pieces': 'Hiện mảnh', 'view.front': 'Trước', 'view.back': 'Sau', 'view.left': 'Trái', 'view.right': 'Phải',
@@ -663,6 +703,7 @@
   async function openFile(file) {
     if (!file) return;
     if (/\.decal$/i.test(file.name)) { openProject(file); return; }
+    if (/^image\//.test(file.type) || /\.(png|jpe?g|webp|avif|bmp|gif|heic)$/i.test(file.name)) { openScan(file); return; }
     toast(i18n('msg.reading', { name: file.name }));
     try {
       const r = await Geo.readFile(file, lang);
@@ -1882,9 +1923,7 @@
     });
   }
 
-  $('art-input').addEventListener('change', async (e) => {
-    const f = e.target.files[0];
-    e.target.value = '';
+  async function applyArtFile(f) {
     if (!f || artSel === null) return;
     try {
       const im = await loadArtFile(f);
@@ -1893,6 +1932,18 @@
       artworkStore[artSel] = art;
       relayout();
     } catch (err) { toast(i18n('msg.artBad'), 'bad'); }
+  }
+  $('art-input').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; applyArtFile(f); });
+  // drop an image on a piece of the sheet: select it and use the image
+  $('pages').addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  $('pages').addEventListener('drop', (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f || !/^image\//.test(f.type)) return;
+    e.preventDefault();
+    const el = (document.elementFromPoint(e.clientX, e.clientY) || e.target).closest('path[data-piece]');
+    if (el) { artSel = el.dataset.piece; syncArtUI(); }
+    if (artSel === null) { toast(i18n('art.pick')); return; }
+    applyArtFile(f);
   });
   $('art-add').addEventListener('click', (e) => { if (artSel === null) { e.preventDefault(); toast(i18n('art.pick')); } });
   $('art-fit').addEventListener('click', () => { const a = artOf(artSel); if (a) { placeArt(a, artSel, false); relayout(); } });
@@ -2160,6 +2211,212 @@
     if (state.pieces && state.pieces.length) relayout(); else render2D();
   }
   document.querySelectorAll('.lang-btn').forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+
+  // ---------------------------------------------------------- scan paper ---
+  // A photo or scan of a drawing on a sheet of known size becomes a plate of
+  // the drawn shapes, extruded at 1:1.
+  const scanDlg = $('scan-dialog');
+  const scan = { gray: null, w: 0, h: 0, bmp: null, corners: null, res: null, shapes: [], tris: null, drag: -1, timer: 0 };
+
+  function scanPaperSize() {
+    const [pw, ph] = Scan.PAPERS[$('scan-paper').value] || Scan.PAPERS.A4;
+    let o = $('scan-orient').value;
+    if (o === 'auto') o = scan.corners ? Scan.guessOrientation(scan.corners) : 'portrait';
+    return o === 'landscape' ? [Math.max(pw, ph), Math.min(pw, ph)] : [Math.min(pw, ph), Math.max(pw, ph)];
+  }
+
+  async function scanLoad(file) {
+    let bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { toast(i18n('msg.artBad'), 'bad'); return; }
+    // work on at most 2400 px; find the sheet on an 800 px copy
+    const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * k), hh = Math.round(bmp.height * k);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = hh;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(bmp, 0, 0, w, hh);
+    scan.gray = Scan.toGray(g.getImageData(0, 0, w, hh).data, w, hh);
+    scan.w = w; scan.h = hh; scan.bmp = cv;
+    const ks = Math.min(1, 800 / Math.max(w, hh)), sw = Math.round(w * ks), sh = Math.round(hh * ks);
+    const small = document.createElement('canvas');
+    small.width = sw; small.height = sh;
+    const sg = small.getContext('2d', { willReadFrequently: true });
+    sg.drawImage(cv, 0, 0, sw, sh);
+    scan.corners = Scan.detectPaper(Scan.toGray(sg.getImageData(0, 0, sw, sh).data, sw, sh), sw, sh).map(([x, y]) => [x / ks, y / ks]);
+    drawScanPhoto();
+    runScan();
+  }
+
+  // photo with the sheet's quad and draggable corner dots
+  function drawScanPhoto() {
+    const c = $('scan-photo'), g = c.getContext('2d');
+    if (!scan.bmp) { g.clearRect(0, 0, c.width, c.height); return; }
+    const k = Math.min(c.width / scan.w, c.height / scan.h);
+    scan.view = { k, ox: (c.width - scan.w * k) / 2, oy: (c.height - scan.h * k) / 2 };
+    const { ox, oy } = scan.view;
+    g.fillStyle = '#1b2029';
+    g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(scan.bmp, ox, oy, scan.w * k, scan.h * k);
+    const pts = scan.corners.map(([x, y]) => [ox + x * k, oy + y * k]);
+    g.strokeStyle = '#3ddc84'; g.lineWidth = 2;
+    g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.stroke();
+    for (const p of pts) { g.beginPath(); g.arc(p[0], p[1], 7, 0, Math.PI * 2); g.fillStyle = 'rgba(61, 220, 132, .35)'; g.fill(); g.stroke(); }
+  }
+
+  function scanOffset(shape, d) {
+    // pen line -> its centre: shrink the material by half the pen width (Clipper)
+    const C = window.ClipperLib;
+    if (!C || !d) return [shape];
+    const S = 1000, path = (r) => { const p = []; for (let i = 0; i < r.length; i += 2) p.push({ X: Math.round(r[i] * S), Y: Math.round(r[i + 1] * S) }); return p; };
+    const co = new C.ClipperOffset(2, 0.01 * S);
+    co.AddPaths([path(shape.outer), ...shape.holes.map(path)], C.JoinType.jtRound, C.EndType.etClosedPolygon);
+    const tree = new C.PolyTree();
+    co.Execute(tree, -d * S);
+    const out = [];
+    const ring = (p) => { const r = []; for (const q of p) r.push(q.X / S, q.Y / S); return r; };
+    const walk = (node) => {
+      for (const ch of node.Childs()) {
+        if (!ch.IsHole()) out.push({ outer: ring(ch.Contour()), holes: ch.Childs().map((hc) => ring(hc.Contour())) });
+        for (const hc of ch.Childs()) walk(hc);
+      }
+    };
+    walk(tree);
+    return out;
+  }
+
+  function runScan() {
+    clearTimeout(scan.timer);
+    scan.timer = setTimeout(() => {
+      if (!scan.gray) return;
+      const paper = scanPaperSize();
+      try {
+        scan.res = Scan.extract(scan.gray, scan.w, scan.h, scan.corners, paper, {
+          mode: $('scan-mode').value, sensitivity: Number($('scan-sens').value) / 100, minArea: Math.max(0, Number($('scan-min').value) || 0),
+        });
+      } catch (e) { scan.res = null; }
+      const half = scan.res && scan.res.stroke ? scan.res.stroke / 2 : 0;
+      scan.shapes = scan.res ? scan.res.shapes.flatMap((s) => scanOffset(s, half)) : [];
+      scan.tris = scan.shapes.length ? scanTriangles(scan.shapes, Math.max(0.4, Number($('scan-thick').value) || 3)) : null;
+      drawScanResult();
+    }, 120);
+  }
+
+  // extrude the outlines (mm, y down on the sheet) into a plate lying on z = 0
+  function scanTriangles(shapes, thick) {
+    const three = shapes.map((s) => {
+      const toV = (r) => { const v = []; for (let i = 0; i < r.length; i += 2) v.push(new THREE.Vector2(r[i], -r[i + 1])); return v; };
+      const sh = new THREE.Shape(toV(s.outer));
+      for (const hl of s.holes) sh.holes.push(new THREE.Path(toV(hl)));
+      return sh;
+    });
+    const geo = new THREE.ExtrudeGeometry(three, { depth: thick, bevelEnabled: false, curveSegments: 1 });
+    const pos = (geo.index ? geo.toNonIndexed() : geo).attributes.position.array;
+    geo.dispose();
+    return Float32Array.from(pos);
+  }
+
+  function drawScanResult() {
+    const c = $('scan-result'), g = c.getContext('2d');
+    g.fillStyle = '#1b2029';
+    g.fillRect(0, 0, c.width, c.height);
+    const r = scan.res;
+    $('scan-use').disabled = $('scan-stl').disabled = !scan.tris;
+    if (!r) { $('scan-stats').textContent = i18n(scan.gray ? 'scan.nothing' : 'scan.none'); return; }
+    const k = Math.min(c.width / r.W, c.height / r.H), ox = (c.width - r.W * k) / 2, oy = (c.height - r.H * k) / 2;
+    // the straightened sheet, greyed
+    const img = g.createImageData(Math.round(r.W * k), Math.round(r.H * k));
+    for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
+      const v = r.rect[Math.min(r.H - 1, Math.floor(y / k)) * r.W + Math.min(r.W - 1, Math.floor(x / k))];
+      const o = 4 * (y * img.width + x);
+      img.data[o] = img.data[o + 1] = img.data[o + 2] = 120 + v * 0.45; img.data[o + 3] = 255;
+    }
+    g.putImageData(img, Math.round(ox), Math.round(oy));
+    const s = k * r.ppm;
+    g.beginPath();
+    for (const sh of scan.shapes) for (const ring of [sh.outer, ...sh.holes]) {
+      for (let i = 0; i < ring.length; i += 2) { const x = ox + ring[i] * s, y = oy + ring[i + 1] * s; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.closePath();
+    }
+    g.fillStyle = 'rgba(47, 111, 237, .45)'; g.fill('evenodd');
+    g.strokeStyle = '#2f6fed'; g.lineWidth = 1.5; g.stroke();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const sh of scan.shapes) for (let i = 0; i < sh.outer.length; i += 2) { x0 = Math.min(x0, sh.outer[i]); x1 = Math.max(x1, sh.outer[i]); y0 = Math.min(y0, sh.outer[i + 1]); y1 = Math.max(y1, sh.outer[i + 1]); }
+    $('scan-stats').textContent = scan.shapes.length
+      ? i18n('scan.stats', { n: scan.shapes.length, w: (x1 - x0).toFixed(1), h: (y1 - y0).toFixed(1), pen: r.stroke ? r.stroke.toFixed(1) : '–' })
+      : i18n('scan.nothing');
+  }
+
+  const scanPoint = (e) => {
+    const c = $('scan-photo'), rect = c.getBoundingClientRect(), v = scan.view;
+    const cx = ((e.clientX - rect.left) / rect.width) * c.width, cy = ((e.clientY - rect.top) / rect.height) * c.height;
+    return [(cx - v.ox) / v.k, (cy - v.oy) / v.k, cx, cy];
+  };
+  $('scan-photo').addEventListener('pointerdown', (e) => {
+    if (!scan.corners) return;
+    const [, , cx, cy] = scanPoint(e), v = scan.view;
+    let best = -1, bd = 24;
+    scan.corners.forEach(([x, y], i) => { const d = Math.hypot(v.ox + x * v.k - cx, v.oy + y * v.k - cy); if (d < bd) { bd = d; best = i; } });
+    if (best < 0) return;
+    scan.drag = best;
+    try { $('scan-photo').setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+  $('scan-photo').addEventListener('pointermove', (e) => {
+    if (scan.drag < 0) return;
+    const [x, y] = scanPoint(e);
+    scan.corners[scan.drag] = [Math.max(0, Math.min(scan.w - 1, x)), Math.max(0, Math.min(scan.h - 1, y))];
+    drawScanPhoto();
+    runScan();
+  });
+  const endScanDrag = () => { scan.drag = -1; };
+  $('scan-photo').addEventListener('pointerup', endScanDrag);
+  $('scan-photo').addEventListener('pointercancel', endScanDrag);
+
+  function openScan(file) {
+    drawScanPhoto(); drawScanResult();
+    if (!scanDlg.open) { if (typeof scanDlg.showModal === 'function') scanDlg.showModal(); else scanDlg.setAttribute('open', ''); }
+    if (file) scanLoad(file);
+  }
+  $('scan-open').addEventListener('click', () => openScan());
+  scanDlg.addEventListener('dragover', (e) => { e.preventDefault(); scanDlg.classList.add('drop-on'); });
+  scanDlg.addEventListener('dragleave', (e) => { if (e.target === scanDlg || !scanDlg.contains(e.relatedTarget)) scanDlg.classList.remove('drop-on'); });
+  scanDlg.addEventListener('drop', (e) => {
+    e.preventDefault();
+    scanDlg.classList.remove('drop-on');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && /^image\//.test(f.type)) scanLoad(f); else if (f) toast(i18n('msg.artBad'), 'bad');
+  });
+  // Ctrl+V with an image: scan dialog if open; in the 2D tab, artwork for the selected
+  // piece; otherwise start a scan with it
+  window.addEventListener('paste', (e) => {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const item = [...((e.clipboardData && e.clipboardData.items) || [])].find((it) => it.kind === 'file' && /^image\//.test(it.type));
+    const f = item && item.getAsFile();
+    if (!f) return;
+    e.preventDefault();
+    if (scanDlg.open) scanLoad(f);
+    else if (currentTab === '2d') { if (artSel === null) toast(i18n('art.pick')); else applyArtFile(f); }
+    else openScan(f);
+  });
+  $('scan-cancel').addEventListener('click', () => scanDlg.close());
+  $('scan-input').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) scanLoad(f); });
+  for (const id of ['scan-paper', 'scan-orient', 'scan-mode', 'scan-sens', 'scan-thick', 'scan-min']) $(id).addEventListener('input', runScan);
+  const scanName = () => `scan-${$('scan-paper').value}`;
+  $('scan-stl').addEventListener('click', async () => {
+    if (!scan.tris) return;
+    await saveFile(`${scanName()}.stl`, new Blob([Scan.toSTL(scan.tris, scanName())], { type: 'model/stl' }));
+  });
+  $('scan-use').addEventListener('click', () => {
+    if (!scan.tris) return;
+    state.unitScale = 1;
+    $('unit').value = '1';
+    loadRaw(scan.tris, `${scanName()}.stl`, 'z', false);
+    // a flat plate: look at it from above and a little in front
+    fitView(new THREE.Vector3(0, 1, 0.6), false);
+    scanDlg.close();
+    switchTab('3d');
+    toast(i18n('msg.scanOpened', { n: scan.shapes.length }));
+  });
 
   // privacy & disclaimer dialog (a click on the dimmed backdrop closes it too)
   const privacy = $('privacy-dialog');

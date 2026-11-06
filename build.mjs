@@ -17,7 +17,7 @@ const tiles = { carbon: dataUrl('src/assets/carbon-tile.png', 'image/png') };
 for (const f of readdirSync(join(root, 'src/assets/textures')).filter((n) => n.endsWith('.jpg')).sort()) {
   tiles[f.replace(/\.jpg$/, '')] = dataUrl(`src/assets/textures/${f}`, 'image/jpeg');
 }
-const modules = ['src/geometry.js', 'src/flatten.js', 'src/layout.js', 'src/project.js', 'src/app.js']
+const modules = ['src/geometry.js', 'src/flatten.js', 'src/layout.js', 'src/project.js', 'src/scan.js', 'src/app.js']
   .map((p) => `// ===== ${p} =====\n${read(p)}`).join('\n')
   .replace("'%TEXTURES%'", JSON.stringify(tiles));
 

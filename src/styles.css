@@ -121,7 +121,25 @@ button, input, select { font: inherit; color: inherit; }
 .modal-body { font-size: 13px; line-height: 1.55; color: var(--ink); }
 .modal-body ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
 .modal-body p { margin: 0; }
-.modal-actions { display: flex; justify-content: flex-end; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.scan-open { width: 100%; }
+.scan-modal { width: min(1020px, calc(100% - 32px)); }
+.scan-modal.drop-on { outline: 3px dashed var(--accent); outline-offset: -6px; }
+.scan-body { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 14px; }
+.scan-body h2 { margin: 0; font-size: 16px; }
+.scan-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
+.scan-hint b { color: var(--ink); }
+.scan-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.scan-row .inl { flex: 0 1 auto; }
+.scan-row > select, .scan-row .inl > select { width: auto; }
+.scan-row input[type="number"] { width: 70px; }
+.scan-row input[type="range"] { width: 130px; }
+.scan-views { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scan-views figure { margin: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.scan-views canvas { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: #1b2029; touch-action: none; }
+#scan-photo { cursor: crosshair; }
+.scan-views figcaption { font-size: 12px; color: var(--muted); }
+@media (max-width: 700px) { .scan-views { grid-template-columns: 1fr; } }
 .col { display: contents; }
 .sec { padding: 9px 12px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 7px; }
 .panel > .col:last-child > .sec:last-child { border-bottom: 0; }
