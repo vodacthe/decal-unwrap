@@ -137,6 +137,8 @@
       'scan.stl': 'Download STL',
       'scan.use': 'Open in 3D',
       'msg.scanOpened': 'Made a 3D plate from {n} shape(s) at 1:1.',
+      'btn.modelStl': 'Download STL',
+      'title.modelStl': 'Download the open model as STL (mm)',
       'aria.controls': 'Controls', 'aria.mode': 'Mode', 'aria.language': 'Language', 'aria.view': 'View',
       'tab.3d': '① Select surface (3D)', 'tab.2d': '② Print layout (2D)',
       'view.pieces': 'Show pieces', 'view.front': 'Front', 'view.back': 'Back', 'view.left': 'Left', 'view.right': 'Right',
@@ -295,6 +297,8 @@
       'scan.stl': 'Tải STL',
       'scan.use': 'Mở trong 3D',
       'msg.scanOpened': 'Đã tạo tấm 3D từ {n} hình, đúng tỉ lệ 1:1.',
+      'btn.modelStl': 'Tải STL',
+      'title.modelStl': 'Tải mô hình đang mở dưới dạng STL (mm)',
       'aria.controls': 'Bảng điều khiển', 'aria.mode': 'Chế độ', 'aria.language': 'Ngôn ngữ', 'aria.view': 'Góc nhìn',
       'tab.3d': '① Chọn bề mặt (3D)', 'tab.2d': '② Bản in (2D)',
       'view.pieces': 'Hiện mảnh', 'view.front': 'Trước', 'view.back': 'Sau', 'view.left': 'Trái', 'view.right': 'Phải',
@@ -2377,6 +2381,12 @@
     if (file) scanLoad(file);
   }
   $('scan-open').addEventListener('click', () => openScan());
+  // the open model as STL in mm (a scanned plate, or any loaded file in its own orientation)
+  $('model-stl').addEventListener('click', async () => {
+    if (!state.raw) return;
+    const k = state.unitScale || 1, tris = k === 1 ? state.raw : Float32Array.from(state.raw, (v) => v * k);
+    await saveFile(`${baseName()}.stl`, new Blob([Scan.toSTL(tris, baseName())], { type: 'model/stl' }));
+  });
   scanDlg.addEventListener('dragover', (e) => { e.preventDefault(); scanDlg.classList.add('drop-on'); });
   scanDlg.addEventListener('dragleave', (e) => { if (e.target === scanDlg || !scanDlg.contains(e.relatedTarget)) scanDlg.classList.remove('drop-on'); });
   scanDlg.addEventListener('drop', (e) => {
