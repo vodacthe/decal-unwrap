@@ -330,6 +330,70 @@ const Scan = (() => {
     return est[est.length - 1][0];
   }
 
+  // Distance (px) from each pixel to the nearest pixel where mask == value
+  // (two-pass 3-4 chamfer, close to Euclidean).
+  function chamfer(mask, W, H, value) {
+    const BIG = 1e9, d = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) d[i] = mask[i] === value ? 0 : BIG;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const p = y * W + x;
+      let v = d[p];
+      if (!v) continue;
+      if (x > 0) v = Math.min(v, d[p - 1] + 3);
+      if (y > 0) { v = Math.min(v, d[p - W] + 3); if (x > 0) v = Math.min(v, d[p - W - 1] + 4); if (x < W - 1) v = Math.min(v, d[p - W + 1] + 4); }
+      d[p] = v;
+    }
+    for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+      const p = y * W + x;
+      let v = d[p];
+      if (!v) continue;
+      if (x < W - 1) v = Math.min(v, d[p + 1] + 3);
+      if (y < H - 1) { v = Math.min(v, d[p + W] + 3); if (x < W - 1) v = Math.min(v, d[p + W + 1] + 4); if (x > 0) v = Math.min(v, d[p + W - 1] + 4); }
+      d[p] = v;
+    }
+    for (let i = 0; i < W * H; i++) d[i] /= 3;
+    return d;
+  }
+  // Morphological opening with a disc of radius r px: removes parts thinner than 2r
+  function openMask(mask, W, H, r) {
+    const toPaper = chamfer(mask, W, H, 0);
+    const core = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) core[i] = toPaper[i] > r ? 1 : 0;
+    const toCore = chamfer(core, W, H, 1);
+    const out = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) out[i] = mask[i] && toCore[i] <= r + 0.5 ? 1 : 0;
+    return out;
+  }
+
+  // Gaussian smoothing of a closed outline (mm) along its length; sigma in mm
+  function smoothRing(r, sigma) {
+    const n = r.length / 2;
+    let L = 0;
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; L += Math.hypot(r[2 * j] - r[2 * i], r[2 * j + 1] - r[2 * i + 1]); }
+    if (L < 6 * sigma) return r.slice();
+    const h = Math.min(0.1, sigma / 3), N = Math.max(16, Math.round(L / h)), step = L / N;
+    const xs = new Float64Array(N), ys = new Float64Array(N);
+    let i = 0, acc = 0, t = 0, k = 0;
+    while (k < N) {
+      const a = i % n, b = (i + 1) % n, l = Math.hypot(r[2 * b] - r[2 * a], r[2 * b + 1] - r[2 * a + 1]);
+      if (t <= acc + l || i >= 2 * n) {
+        const q = l > 0 ? Math.min(1, (t - acc) / l) : 0;
+        xs[k] = r[2 * a] + (r[2 * b] - r[2 * a]) * q; ys[k] = r[2 * a + 1] + (r[2 * b + 1] - r[2 * a + 1]) * q;
+        k++; t += step;
+      } else { acc += l; i++; }
+    }
+    const s = sigma / step, R = Math.ceil(3 * s), w = [];
+    for (let j = -R; j <= R; j++) w.push(Math.exp(-(j * j) / (2 * s * s)));
+    const ws = w.reduce((p, q) => p + q, 0);
+    const out = new Array(2 * N);
+    for (let c = 0; c < N; c++) {
+      let sx = 0, sy = 0;
+      for (let j = -R; j <= R; j++) { const m = (((c + j) % N) + N) % N, wj = w[j + R]; sx += xs[m] * wj; sy += ys[m] * wj; }
+      out[2 * c] = sx / ws; out[2 * c + 1] = sy / ws;
+    }
+    return out;
+  }
+
   // Whole pipeline. gray: photo pixels (w×h); corners: sheet corners TL, TR, BR, BL;
   // paper: [width, height] mm of the sheet as seen (portrait or landscape).
   // Returns shapes in mm, y down from the sheet's top-left corner.
@@ -354,8 +418,16 @@ const Scan = (() => {
         ink = inkMask(rect, W, Hh, ppm, sens, border, core[core.length >> 1]);
       }
     }
-    const mat = materialMask(ink, W, Hh, mode);
-    const loops = traceContours(mat, W, Hh).map((r) => simplify(r, 0.7).map((v) => v / ppm));
+    let mat = materialMask(ink, W, Hh, mode);
+    // filled drawings: thin pencil lines or scratches touching a shape are not part of it
+    const open = opts.open === undefined ? 0.6 : opts.open;
+    if (mode === 'filled' && open > 0) mat = openMask(mat, W, Hh, open * ppm);
+    // pixel staircase and a ragged ink edge -> smooth outline
+    const smooth = opts.smooth === undefined ? 0.8 : opts.smooth;
+    const loops = traceContours(mat, W, Hh).map((r) => {
+      const mm = r.map((v) => v / ppm);
+      return smooth > 0 ? simplify(smoothRing(mm, smooth), 0.02) : simplify(mm, 0.7 / ppm);
+    });
     const minArea = opts.minArea === undefined ? 20 : opts.minArea;
     // material on the right of each loop (y down): outer outlines run clockwise
     // on screen (positive area), holes the other way

@@ -107,6 +107,26 @@ const bbs = br.shapes.map((q) => bb(q.outer));
 check('soft scan: height still 59.55 ± 0.4 mm', bbs.length === 2 && bbs.every(([, , , hh]) => Math.abs(hh - 59.55) < 0.4), bbs.map((q) => `${q[2].toFixed(2)} × ${q[3].toFixed(2)}`).join(', '));
 check('soft scan: width 20 ± 0.4 mm', bbs.length === 2 && bbs.every(([, , ww]) => Math.abs(ww - 20) < 0.4));
 
+// a filled disc (r = 25 mm) with a ragged edge (±0.3 mm ripple) and a 0.4 mm
+// pencil line running into it: the line goes, the edge comes out smooth
+const dsc = new Float32Array(fw * fh);
+for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+  const u = x / 5 - 100, v = y / 5 - 150, a = Math.atan2(v, u);
+  const rr = 25 + 0.3 * Math.sin(a * 91) + 0.2 * Math.sin(a * 151 + 1); // ripples 1-2 mm long, like a marker edge
+  const pencil = Math.abs(v + 10) < 0.2 && u < 0 && u > -60;
+  dsc[y * fw + x] = Math.hypot(u, v) < rr ? 60 : pencil ? 150 : 238;
+}
+const dr = Scan.extract(dsc, fw, fh, Scan.detectPaper(dsc, fw, fh), [210, 297], { minArea: 20 });
+const disc = dr.shapes[0];
+const [dx0, , dw, dh] = disc ? bb(disc.outer) : [0, 0, 0, 0];
+check('pencil line touching a filled shape is dropped', dr.shapes.length === 1 && dx0 > 74, `${dr.shapes.length} shapes, left edge ${dx0.toFixed(1)} mm`);
+const radii = [];
+if (disc) for (let i = 0; i < disc.outer.length; i += 2) radii.push(Math.hypot(disc.outer[i] - 100, disc.outer[i + 1] - 150));
+const rMean = radii.reduce((s, v) => s + v, 0) / (radii.length || 1);
+const rms = Math.sqrt(radii.reduce((s, v) => s + (v - rMean) ** 2, 0) / (radii.length || 1));
+check('ragged edge smoothed (rms wobble < 0.06 mm; the ripple was 0.25)', disc && rms < 0.06, `${rms.toFixed(3)} mm`);
+check('disc size kept (Ø 50 ± 0.3 mm)', disc && Math.abs(2 * rMean - 50) < 0.3, `Ø ${(2 * rMean).toFixed(2)} mm`);
+
 const stl = Scan.toSTL(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
 check('binary STL', stl.byteLength === 134 && new DataView(stl).getUint32(80, true) === 1);
 

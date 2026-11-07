@@ -832,6 +832,9 @@ label.btn.disabled { opacity: .5; }
     <div class="scan-row">
       <label class="inl" title="Higher picks up fainter lines (and more smudges)" data-i18n-attr="title:title.scanSens"><span data-i18n="scan.sens">Sensitivity</span><input type="range" id="scan-sens" min="5" max="50" step="1" value="22"></label>
       <label class="inl"><span data-i18n="scan.thick">Thickness mm</span><input type="number" id="scan-thick" min="0.4" max="50" step="0.2" value="3"></label>
+      <label class="inl" title="Rounds the corners of the outline seen from above (outer and inner corners)" data-i18n-attr="title:title.scanCorner"><span data-i18n="scan.corner">Round corners mm</span><input type="number" id="scan-corner" min="0" max="100" step="0.5" value="0"></label>
+      <label class="inl" title="Rounds the plate edge instead of a square 90° edge; the outline size stays the same" data-i18n-attr="title:title.scanEdge"><span data-i18n="scan.edge">Round edges mm</span><input type="number" id="scan-edge" min="0" max="25" step="0.2" value="0"></label>
+      <select id="scan-edge-mode" autocomplete="off" aria-label="Round edges" data-i18n-attr="aria-label:scan.edge"><option value="both" selected data-i18n="scan.edgeBoth">Top &amp; bottom</option><option value="top" data-i18n="scan.edgeTop">Top only</option></select>
       <label class="inl" title="Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match" data-i18n-attr="title:title.scanReal"><span data-i18n="scan.realW">True width mm</span><input type="number" id="scan-realw" min="1" max="2000" step="0.1" placeholder="—"></label>
       <label class="inl" title="Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match" data-i18n-attr="title:title.scanReal"><span data-i18n="scan.realH">True height mm</span><input type="number" id="scan-realh" min="1" max="2000" step="0.1" placeholder="—"></label>
       <label class="inl" title="Marks smaller than this are ignored (mm²)" data-i18n-attr="title:title.scanMin"><span data-i18n="scan.min">Ignore below mm²</span><input type="number" id="scan-min" min="0" max="5000" step="5" value="20"></label>
@@ -4788,6 +4791,70 @@ const Scan = (() => {
     return est[est.length - 1][0];
   }
 
+  // Distance (px) from each pixel to the nearest pixel where mask == value
+  // (two-pass 3-4 chamfer, close to Euclidean).
+  function chamfer(mask, W, H, value) {
+    const BIG = 1e9, d = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) d[i] = mask[i] === value ? 0 : BIG;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const p = y * W + x;
+      let v = d[p];
+      if (!v) continue;
+      if (x > 0) v = Math.min(v, d[p - 1] + 3);
+      if (y > 0) { v = Math.min(v, d[p - W] + 3); if (x > 0) v = Math.min(v, d[p - W - 1] + 4); if (x < W - 1) v = Math.min(v, d[p - W + 1] + 4); }
+      d[p] = v;
+    }
+    for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+      const p = y * W + x;
+      let v = d[p];
+      if (!v) continue;
+      if (x < W - 1) v = Math.min(v, d[p + 1] + 3);
+      if (y < H - 1) { v = Math.min(v, d[p + W] + 3); if (x < W - 1) v = Math.min(v, d[p + W + 1] + 4); if (x > 0) v = Math.min(v, d[p + W - 1] + 4); }
+      d[p] = v;
+    }
+    for (let i = 0; i < W * H; i++) d[i] /= 3;
+    return d;
+  }
+  // Morphological opening with a disc of radius r px: removes parts thinner than 2r
+  function openMask(mask, W, H, r) {
+    const toPaper = chamfer(mask, W, H, 0);
+    const core = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) core[i] = toPaper[i] > r ? 1 : 0;
+    const toCore = chamfer(core, W, H, 1);
+    const out = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) out[i] = mask[i] && toCore[i] <= r + 0.5 ? 1 : 0;
+    return out;
+  }
+
+  // Gaussian smoothing of a closed outline (mm) along its length; sigma in mm
+  function smoothRing(r, sigma) {
+    const n = r.length / 2;
+    let L = 0;
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; L += Math.hypot(r[2 * j] - r[2 * i], r[2 * j + 1] - r[2 * i + 1]); }
+    if (L < 6 * sigma) return r.slice();
+    const h = Math.min(0.1, sigma / 3), N = Math.max(16, Math.round(L / h)), step = L / N;
+    const xs = new Float64Array(N), ys = new Float64Array(N);
+    let i = 0, acc = 0, t = 0, k = 0;
+    while (k < N) {
+      const a = i % n, b = (i + 1) % n, l = Math.hypot(r[2 * b] - r[2 * a], r[2 * b + 1] - r[2 * a + 1]);
+      if (t <= acc + l || i >= 2 * n) {
+        const q = l > 0 ? Math.min(1, (t - acc) / l) : 0;
+        xs[k] = r[2 * a] + (r[2 * b] - r[2 * a]) * q; ys[k] = r[2 * a + 1] + (r[2 * b + 1] - r[2 * a + 1]) * q;
+        k++; t += step;
+      } else { acc += l; i++; }
+    }
+    const s = sigma / step, R = Math.ceil(3 * s), w = [];
+    for (let j = -R; j <= R; j++) w.push(Math.exp(-(j * j) / (2 * s * s)));
+    const ws = w.reduce((p, q) => p + q, 0);
+    const out = new Array(2 * N);
+    for (let c = 0; c < N; c++) {
+      let sx = 0, sy = 0;
+      for (let j = -R; j <= R; j++) { const m = (((c + j) % N) + N) % N, wj = w[j + R]; sx += xs[m] * wj; sy += ys[m] * wj; }
+      out[2 * c] = sx / ws; out[2 * c + 1] = sy / ws;
+    }
+    return out;
+  }
+
   // Whole pipeline. gray: photo pixels (w×h); corners: sheet corners TL, TR, BR, BL;
   // paper: [width, height] mm of the sheet as seen (portrait or landscape).
   // Returns shapes in mm, y down from the sheet's top-left corner.
@@ -4812,8 +4879,16 @@ const Scan = (() => {
         ink = inkMask(rect, W, Hh, ppm, sens, border, core[core.length >> 1]);
       }
     }
-    const mat = materialMask(ink, W, Hh, mode);
-    const loops = traceContours(mat, W, Hh).map((r) => simplify(r, 0.7).map((v) => v / ppm));
+    let mat = materialMask(ink, W, Hh, mode);
+    // filled drawings: thin pencil lines or scratches touching a shape are not part of it
+    const open = opts.open === undefined ? 0.6 : opts.open;
+    if (mode === 'filled' && open > 0) mat = openMask(mat, W, Hh, open * ppm);
+    // pixel staircase and a ragged ink edge -> smooth outline
+    const smooth = opts.smooth === undefined ? 0.8 : opts.smooth;
+    const loops = traceContours(mat, W, Hh).map((r) => {
+      const mm = r.map((v) => v / ppm);
+      return smooth > 0 ? simplify(smoothRing(mm, smooth), 0.02) : simplify(mm, 0.7 / ppm);
+    });
     const minArea = opts.minArea === undefined ? 20 : opts.minArea;
     // material on the right of each loop (y down): outer outlines run clockwise
     // on screen (positive area), holes the other way
@@ -5017,6 +5092,14 @@ const Scan = (() => {
       'title.scanReal': 'Measured the real part and it differs? Enter its true width and/or height; the result is scaled to match',
       'scan.corrected': '(measured {w} × {h}, scaled ×{fx} / ×{fy})',
       'scan.auto': 'Auto',
+      'scan.corner': 'Round corners mm',
+      'title.scanCorner': 'Rounds the corners of the outline seen from above (outer and inner corners)',
+      'scan.edge': 'Round edges mm',
+      'title.scanEdge': 'Rounds the plate edge instead of a square 90° edge; the outline size stays the same',
+      'scan.edgeTop': 'Top only',
+      'scan.edgeBoth': 'Top & bottom',
+      'scan.edgeMax': 'edge radius limited to {r} mm by the thickness',
+      'scan.edgeReduced': 'edge radius reduced on thin parts',
       'aria.controls': 'Controls', 'aria.mode': 'Mode', 'aria.language': 'Language', 'aria.view': 'View',
       'tab.3d': '① Select surface (3D)', 'tab.2d': '② Print layout (2D)',
       'view.pieces': 'Show pieces', 'view.front': 'Front', 'view.back': 'Back', 'view.left': 'Left', 'view.right': 'Right',
@@ -5189,6 +5272,14 @@ const Scan = (() => {
       'title.scanReal': 'Đo vật thật thấy lệch? Nhập chiều rộng và/hoặc chiều cao thật; kết quả sẽ được co giãn cho khớp',
       'scan.corrected': '(đo được {w} × {h}, đã chỉnh ×{fx} / ×{fy})',
       'scan.auto': 'Tự động',
+      'scan.corner': 'Bo góc mm',
+      'title.scanCorner': 'Bo tròn các góc của hình nhìn từ trên (cả góc lồi và góc lõm)',
+      'scan.edge': 'Bo cạnh mm',
+      'title.scanEdge': 'Bo tròn mép tấm thay vì cạnh vuông 90°; kích thước nhìn từ trên giữ nguyên',
+      'scan.edgeTop': 'Chỉ mặt trên',
+      'scan.edgeBoth': 'Hai mặt',
+      'scan.edgeMax': 'bo cạnh tối đa {r} mm theo độ dày',
+      'scan.edgeReduced': 'đã giảm bo cạnh ở chỗ mảnh',
       'aria.controls': 'Bảng điều khiển', 'aria.mode': 'Chế độ', 'aria.language': 'Ngôn ngữ', 'aria.view': 'Góc nhìn',
       'tab.3d': '① Chọn bề mặt (3D)', 'tab.2d': '② Bản in (2D)',
       'view.pieces': 'Hiện mảnh', 'view.front': 'Trước', 'view.back': 'Sau', 'view.left': 'Trái', 'view.right': 'Phải',
@@ -7196,6 +7287,7 @@ const Scan = (() => {
   $('scan-paper').value = 'A4';
   $('scan-orient').value = 'auto';
   $('scan-mode').value = 'auto';
+  $('scan-edge-mode').value = 'both';
 
   function scanPaperSize() {
     const [pw, ph] = Scan.PAPERS[$('scan-paper').value] || Scan.PAPERS.A4;
@@ -7289,23 +7381,202 @@ const Scan = (() => {
           scan.shapes = scan.shapes.map((sh) => ({ outer: sc(sh.outer), holes: sh.holes.map(sc) }));
         }
       }
-      scan.tris = scan.shapes.length ? scanTriangles(scan.shapes, Math.max(0.4, Number($('scan-thick').value) || 3)) : null;
+      scan.shapes = roundCorners(scan.shapes, Math.max(0, Number($('scan-corner').value) || 0));
+      scan.tris = scan.shapes.length
+        ? scanTriangles(scan.shapes, Math.max(0.4, Number($('scan-thick').value) || 3), Math.max(0, Number($('scan-edge').value) || 0), $('scan-edge-mode').value === 'both')
+        : null;
       drawScanResult();
     }, 120);
   }
 
   // extrude the outlines (mm, y down on the sheet) into a plate lying on z = 0
-  function scanTriangles(shapes, thick) {
-    const three = shapes.map((s) => {
-      const toV = (r) => { const v = []; for (let i = 0; i < r.length; i += 2) v.push(new THREE.Vector2(r[i], -r[i + 1])); return v; };
-      const sh = new THREE.Shape(toV(s.outer));
-      for (const hl of s.holes) sh.holes.push(new THREE.Path(toV(hl)));
-      return sh;
+  // Round the outline's corners in plan: closing rounds the inner (concave)
+  // corners, opening the outer (convex) ones, both with radius R (mm).
+  function roundCorners(shapes, R) {
+    if (!(R > 0) || !window.ClipperLib) return shapes;
+    const grow = (list, d) => list.flatMap((s) => scanOffset(s, -d));
+    const shrink = (list, d) => list.flatMap((s) => scanOffset(s, d));
+    return grow(shrink(shrink(grow(shapes, R), R), R), R);
+  }
+
+  const ringLen = (r) => { let s = 0; const n = r.length / 2; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += Math.hypot(r[2 * j] - r[2 * i], r[2 * j + 1] - r[2 * i + 1]); } return s; };
+  const ringArea2 = (r) => { let s = 0; const n = r.length / 2; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += r[2 * i] * r[2 * j + 1] - r[2 * j] * r[2 * i + 1]; } return s / 2; };
+  const ringCentre = (r) => { let x = 0, y = 0; const n = r.length / 2; for (let i = 0; i < n; i++) { x += r[2 * i]; y += r[2 * i + 1]; } return [x / n, y / n]; };
+  // N points evenly along a closed ring, starting at the vertex nearest to 'start'
+  function resample(r, N, start) {
+    const n = r.length / 2;
+    let s0 = 0;
+    if (start) { let bd = Infinity; for (let i = 0; i < n; i++) { const d = (r[2 * i] - start[0]) ** 2 + (r[2 * i + 1] - start[1]) ** 2; if (d < bd) { bd = d; s0 = i; } } }
+    const pts = [], L = ringLen(r), step = L / N;
+    let i = s0, acc = 0, target = 0;
+    for (let k = 0; k < n && pts.length < N; k++) {
+      const a = i, b = (i + 1) % n;
+      const ax = r[2 * a], ay = r[2 * a + 1], bx = r[2 * b], by = r[2 * b + 1], l = Math.hypot(bx - ax, by - ay);
+      while (pts.length < N && target <= acc + l + 1e-9) { const t = l > 0 ? (target - acc) / l : 0; pts.push([ax + (bx - ax) * t, ay + (by - ay) * t]); target += step; }
+      acc += l; i = b;
+    }
+    while (pts.length < N) pts.push([r[2 * s0], r[2 * s0 + 1]]);
+    return pts;
+  }
+
+  // One plate as a closed mesh: a wall lofted through inset outlines (the edge
+  // fillet profile), a flat or rounded bottom, and caps. Coordinates in mm, y
+  // flipped to y-up. Returns null when insetting changes the shape's topology.
+  function loftShape(shape, T, r, both) {
+    const n = 6, lv = [];
+    if (r > 0 && both) for (let k = n; k >= 0; k--) { const t = (k * Math.PI) / 2 / n; lv.push({ z: r - r * Math.sin(t), d: r * (1 - Math.cos(t)) }); }
+    else lv.push({ z: 0, d: 0 });
+    if (r > 0) for (let k = 0; k <= n; k++) { const t = (k * Math.PI) / 2 / n; lv.push({ z: T - r + r * Math.sin(t), d: r * (1 - Math.cos(t)) }); }
+    else lv.push({ z: T, d: 0 });
+    const levels = lv.filter((l, i) => i === 0 || l.z - lv[i - 1].z > 1e-6 || l.d !== lv[i - 1].d);
+    const maxD = Math.max(...levels.map((l) => l.d));
+    // y-up rings: outer anticlockwise, holes clockwise
+    const flip = (r0) => { const o = r0.map((v, i) => (i % 2 ? -v : v)); return o; };
+    const orient = (r0, pos) => { if ((ringArea2(r0) > 0) === pos) return r0; const o = []; for (let i = r0.length - 2; i >= 0; i -= 2) o.push(r0[i], r0[i + 1]); return o; };
+    const base = { outer: orient(flip(shape.outer), true), holes: shape.holes.map((h) => orient(flip(h), false)) };
+    const sets = [];
+    for (const l of levels) {
+      let s = base;
+      if (l.d > 1e-6) {
+        // scanOffset works in the sheet's y-down frame; flip there and back
+        const down = { outer: flip(base.outer), holes: base.holes.map(flip) };
+        const res = scanOffset(down, l.d);
+        if (res.length !== 1 || res[0].holes.length !== base.holes.length) return null;
+        // a thin arm that disappears when inset also changes the shape: grow the
+        // inset back and see how much area is gone (round corners lose very little)
+        if (l.d === maxD) {
+          const back = scanOffset(res[0], -l.d);
+          const areaOf = (sh) => Math.abs(ringArea2(sh.outer)) - sh.holes.reduce((t, hl) => t + Math.abs(ringArea2(hl)), 0);
+          const a0 = areaOf(down), a1 = back.reduce((t, sh) => t + areaOf(sh), 0);
+          if (a0 - a1 > 0.08 * a0) return null;
+          // every part of the outline must still have inset outline close by
+          // (a sharp corner's tip stays within ~4 d; a lost arm is much further)
+          const ins = res[0].outer, M = ins.length / 2, lim = (4 * l.d + 0.3) ** 2, bo = down.outer, nb = bo.length / 2;
+          const stride = Math.max(1, Math.floor(nb / 400));
+          for (let i = 0; i < nb; i += stride) {
+            const qx = bo[2 * i], qy = bo[2 * i + 1];
+            let best = Infinity;
+            for (let s2 = 0; s2 < M && best > lim; s2++) {
+              const e = (s2 + 1) % M, ax = ins[2 * s2], ay = ins[2 * s2 + 1], ex = ins[2 * e] - ax, ey = ins[2 * e + 1] - ay, L2 = ex * ex + ey * ey;
+              const t = L2 > 0 ? Math.max(0, Math.min(1, ((qx - ax) * ex + (qy - ay) * ey) / L2)) : 0;
+              best = Math.min(best, (ax + ex * t - qx) ** 2 + (ay + ey * t - qy) ** 2);
+            }
+            if (best > lim) return null;
+          }
+        }
+        s = { outer: orient(flip(res[0].outer), true), holes: res[0].holes.map((h) => orient(flip(h), false)) };
+      }
+      sets.push(s);
+    }
+    // match each hole to the original one by its centre
+    const contours = [sets.map((s) => s.outer)];
+    base.holes.forEach((h, j) => {
+      const c0 = ringCentre(h);
+      contours.push(sets.map((s, k) => (k === 0 ? s.holes[j] : s.holes.reduce((best, x) => { const c = ringCentre(x), cb = ringCentre(best); return Math.hypot(c[0] - c0[0], c[1] - c0[1]) < Math.hypot(cb[0] - c0[0], cb[1] - c0[1]) ? x : best; }))));
     });
-    const geo = new THREE.ExtrudeGeometry(three, { depth: thick, bevelEnabled: false, curveSegments: 1 });
-    const pos = (geo.index ? geo.toNonIndexed() : geo).attributes.position.array;
-    geo.dispose();
-    return Float32Array.from(pos);
+    const out = [];
+    const tri = (p, q, s) => out.push(p[0], p[1], p[2], q[0], q[1], q[2], s[0], s[1], s[2]);
+    // ring points with z, plus arc length along the ring
+    const pts3 = (ring, z) => { const p = []; for (let i = 0; i < ring.length; i += 2) p.push([ring[i], ring[i + 1], z]); return p; };
+    const cumOf = (ring) => { const M = ring.length / 2, c = new Float64Array(M + 1); for (let q = 0; q < M; q++) { const e = (q + 1) % M; c[q + 1] = c[q] + Math.hypot(ring[2 * e] - ring[2 * q], ring[2 * e + 1] - ring[2 * q + 1]); } return c; };
+    // For each point of 'ring', the arc position of its nearest point on 'ref'.
+    // An inset outline lies at a fixed distance from the outline it came from, so
+    // these foot points run along 'ref' in order: that pairs the two outlines
+    // without twist, whatever their point counts.
+    function feet(ring, ref, refCum, step) {
+      const M = ref.length / 2, n = ring.length / 2, u = new Float64Array(n);
+      let j = -1;
+      const near = (qx, qy, from, count) => {
+        let best = Infinity, bu = 0, bj = 0;
+        for (let s = 0; s < count; s++) {
+          const sj = (((from + s) % M) + M) % M, ej = (sj + 1) % M;
+          const ax = ref[2 * sj], ay = ref[2 * sj + 1], ex = ref[2 * ej] - ax, ey = ref[2 * ej + 1] - ay, L2 = ex * ex + ey * ey;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((qx - ax) * ex + (qy - ay) * ey) / L2)) : 0;
+          const dd = (ax + ex * t - qx) ** 2 + (ay + ey * t - qy) ** 2;
+          if (dd < best) { best = dd; bj = sj; bu = refCum[sj] + t * (refCum[sj + 1] - refCum[sj]); }
+        }
+        return [best, bu, bj];
+      };
+      for (let i = 0; i < n; i++) {
+        const qx = ring[2 * i], qy = ring[2 * i + 1];
+        let r = j < 0 ? near(qx, qy, 0, M) : near(qx, qy, j - 30, 160);
+        if (j >= 0 && Math.sqrt(r[0]) > 3 * step + 0.3) r = near(qx, qy, 0, M);
+        u[i] = r[1]; j = r[2];
+      }
+      return u;
+    }
+    // zip two outlines (A below, B above) into a wall strip; ua / ub are both
+    // arc positions on the same reference outline of length L
+    function zip(A, B, ua, ub, L) {
+      const nA = A.length, nB = B.length;
+      let j0 = 0, bd = Infinity;
+      for (let j = 0; j < nB; j++) { let d = Math.abs(ub[j] - ua[0]); d = Math.min(d, L - d); if (d < bd) { bd = d; j0 = j; } }
+      const unwrap = (u, n, s0, ref) => {
+        const o = new Float64Array(n + 1);
+        for (let k = 0; k < n; k++) {
+          let v = u[(s0 + k) % n] - ref;
+          v -= Math.round(v / L) * L;
+          if (k > 0) { while (v < o[k - 1] - L / 2) v += L; v = Math.max(v, o[k - 1]); }
+          o[k] = k > 0 ? Math.min(v, o[0] + L) : v;
+        }
+        o[n] = o[0] + L;
+        return o;
+      };
+      const pa = unwrap(ua, nA, 0, ua[0]), pb = unwrap(ub, nB, j0, ua[0]);
+      let i = 0, j = 0;
+      while (i < nA || j < nB) {
+        const a = A[i % nA], b = B[(j0 + j) % nB];
+        if (j >= nB || (i < nA && pa[i + 1] <= pb[j + 1])) { tri(a, A[(i + 1) % nA], b); i++; }
+        else { tri(a, B[(j0 + j + 1) % nB], b); j++; }
+      }
+    }
+    const step = levels.reduce((m, l, k) => (k ? Math.max(m, Math.abs(l.d - levels[k - 1].d)) : m), 0);
+    const rings3 = contours.map((rings) => rings.map((ring, k) => pts3(ring, levels[k].z)));
+    contours.forEach((rings, c) => {
+      for (let k = 0; k + 1 < rings.length; k++) {
+        // foot points go from the more inset outline onto the less inset one
+        const upIn = levels[k + 1].d >= levels[k].d;
+        const ref = upIn ? rings[k] : rings[k + 1], other = upIn ? rings[k + 1] : rings[k];
+        const cum = cumOf(ref), L = cum[ref.length / 2];
+        const own = cum.subarray(0, ref.length / 2), ft = feet(other, ref, cum, step);
+        if (upIn) zip(rings3[c][k], rings3[c][k + 1], own, ft, L);
+        else zip(rings3[c][k], rings3[c][k + 1], ft, own, L);
+      }
+    });
+    // caps from the same ring points, so the mesh is closed
+    const cap = (k, up) => {
+      const rings = rings3.map((R) => R[k]);
+      const v2 = (pts) => pts.map((p) => new THREE.Vector2(p[0], p[1]));
+      const faces = THREE.ShapeUtils.triangulateShape(v2(rings[0]), rings.slice(1).map(v2));
+      const all = rings.flat();
+      for (const [i0, i1, i2] of faces) {
+        const p = all[i0], q = all[i1], s = all[i2];
+        const ccw = (q[0] - p[0]) * (s[1] - p[1]) - (q[1] - p[1]) * (s[0] - p[0]) > 0;
+        if (ccw === up) tri(p, q, s); else tri(p, s, q);
+      }
+    };
+    cap(0, false);
+    cap(levels.length - 1, true);
+    return out;
+  }
+
+  // extrude the outlines (mm, y down on the sheet) into a plate lying on z = 0,
+  // with an optional rounded edge of radius r (top only, or top and bottom)
+  function scanTriangles(shapes, thick, r = 0, both = false) {
+    scan.edgeNote = '';
+    const maxR = Math.max(0, both ? thick / 2 - 0.01 : thick - 0.01);
+    const want = Math.min(Math.max(0, r), maxR);
+    const parts = [];
+    let reduced = 0;
+    for (const s of shapes) {
+      let rr = want, m = null;
+      for (let tries = 0; tries < 6 && !m; tries++) { m = loftShape(s, thick, rr, both); if (!m) { rr *= 0.6; reduced++; } }
+      if (!m) m = loftShape(s, thick, 0, false);
+      if (m) parts.push(m);
+    }
+    if (want < r - 1e-6) scan.edgeNote = i18n('scan.edgeMax', { r: want.toFixed(1) });
+    else if (reduced) scan.edgeNote = i18n('scan.edgeReduced');
+    return Float32Array.from(parts.flat());
   }
 
   function drawScanResult() {
@@ -7340,6 +7611,7 @@ const Scan = (() => {
     $('scan-stats').textContent = scan.shapes.length
       ? `${$('scan-paper').value} ${i18n(r.W > r.H ? 'orient.landscape' : 'orient.portrait')} · ${$('scan-mode').value === 'auto' ? i18n(r.mode === 'filled' ? 'scan.filled' : 'scan.outline') + ' · ' : ''}` + i18n('scan.stats', { n: scan.shapes.length, w: (x1 - x0).toFixed(1), h: (y1 - y0).toFixed(1), pen: r.stroke ? r.stroke.toFixed(1) : '–' }) + corr
       : i18n('scan.nothing');
+    if (scan.shapes.length && scan.edgeNote) $('scan-stats').textContent += ' · ' + scan.edgeNote;
   }
 
   const scanPoint = (e) => {
@@ -7402,7 +7674,7 @@ const Scan = (() => {
   });
   $('scan-cancel').addEventListener('click', () => scanDlg.close());
   $('scan-input').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) scanLoad(f); });
-  for (const id of ['scan-paper', 'scan-orient', 'scan-mode', 'scan-sens', 'scan-thick', 'scan-min', 'scan-realw', 'scan-realh']) $(id).addEventListener('input', runScan);
+  for (const id of ['scan-paper', 'scan-orient', 'scan-mode', 'scan-sens', 'scan-thick', 'scan-min', 'scan-realw', 'scan-realh', 'scan-corner', 'scan-edge', 'scan-edge-mode']) $(id).addEventListener('input', runScan);
   const scanName = () => `scan-${$('scan-paper').value}`;
   $('scan-stl').addEventListener('click', async () => {
     if (!scan.tris) return;
@@ -7441,6 +7713,7 @@ const Scan = (() => {
   window.__decal = {
     state, settings, relayout, generate, camera, controls, bucketFill, pick, shortestPath, Geo, Flat, Layout, Project, fitView, projectJSON, openProject,
     // draw one frame now (the animation loop pauses while the page is hidden)
+    scanDebug: () => ({ scan, loftShape, scanOffset, scanTriangles, roundCorners }),
     renderNow: (t) => { stepCamAnim(t === undefined ? performance.now() : t); controls.update(); renderer.render(scene, camera); gzDirty = true; renderGizmo(); },
   };
 })();
