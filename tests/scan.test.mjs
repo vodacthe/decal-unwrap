@@ -127,6 +127,18 @@ const rms = Math.sqrt(radii.reduce((s, v) => s + (v - rMean) ** 2, 0) / (radii.l
 check('ragged edge smoothed (rms wobble < 0.06 mm; the ripple was 0.25)', disc && rms < 0.06, `${rms.toFixed(3)} mm`);
 check('disc size kept (Ø 50 ± 0.3 mm)', disc && Math.abs(2 * rMean - 50) < 0.3, `Ø ${(2 * rMean).toFixed(2)} mm`);
 
+// light reflections on a dark part bite thin notches (1 mm wide, 3 mm deep) into its edge
+const nsc = new Float32Array(fw * fh);
+for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+  const u = x / 5, v = y / 5;
+  const inRect = u > 60 && u < 140 && v > 80 && v < 200;
+  const bite = u > 60 && u < 63 && [100, 130, 160].some((c) => Math.abs(v - c) < 0.5);
+  nsc[y * fw + x] = inRect && !bite ? 50 : inRect ? 170 : 238;
+}
+const nr = Scan.extract(nsc, fw, fh, Scan.detectPaper(nsc, fw, fh), [210, 297], { minArea: 20 });
+const minLeft = nr.shapes[0] ? Math.max(...nr.shapes[0].outer.filter((_, i) => i % 2 === 0 && nr.shapes[0].outer[i + 1] > 90 && nr.shapes[0].outer[i + 1] < 170 && nr.shapes[0].outer[i] < 100)) : 0;
+check('thin bites in the edge are filled', nr.shapes.length === 1 && minLeft < 61, `${nr.shapes.length} shapes, deepest left edge ${minLeft.toFixed(2)} mm`);
+
 const stl = Scan.toSTL(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
 check('binary STL', stl.byteLength === 134 && new DataView(stl).getUint32(80, true) === 1);
 

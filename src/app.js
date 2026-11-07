@@ -2531,7 +2531,7 @@
     const contours = [sets.map((s) => s.outer)];
     base.holes.forEach((h, j) => {
       const c0 = ringCentre(h);
-      contours.push(sets.map((s, k) => (k === 0 ? s.holes[j] : s.holes.reduce((best, x) => { const c = ringCentre(x), cb = ringCentre(best); return Math.hypot(c[0] - c0[0], c[1] - c0[1]) < Math.hypot(cb[0] - c0[0], cb[1] - c0[1]) ? x : best; }))));
+      contours.push(sets.map((s) => (s.holes.reduce((best, x) => { const c = ringCentre(x), cb = ringCentre(best); return Math.hypot(c[0] - c0[0], c[1] - c0[1]) < Math.hypot(cb[0] - c0[0], cb[1] - c0[1]) ? x : best; }))));
     });
     const out = [];
     const tri = (p, q, s) => out.push(p[0], p[1], p[2], q[0], q[1], q[2], s[0], s[1], s[2]);

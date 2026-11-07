@@ -421,6 +421,14 @@ const Scan = (() => {
     let mat = materialMask(ink, W, Hh, mode);
     // filled drawings: thin pencil lines or scratches touching a shape are not part of it
     const open = opts.open === undefined ? 0.6 : opts.open;
+    // and small bites out of the edge (light reflections on a dark part) are filled
+    const close = opts.close === undefined ? 0.6 : opts.close;
+    if (mode === 'filled' && close > 0) {
+      const inv = new Uint8Array(W * Hh);
+      for (let i = 0; i < W * Hh; i++) inv[i] = mat[i] ? 0 : 1;
+      const o = openMask(inv, W, Hh, close * ppm);
+      for (let i = 0; i < W * Hh; i++) mat[i] = o[i] ? 0 : 1;
+    }
     if (mode === 'filled' && open > 0) mat = openMask(mat, W, Hh, open * ppm);
     // pixel staircase and a ragged ink edge -> smooth outline
     const smooth = opts.smooth === undefined ? 0.8 : opts.smooth;
