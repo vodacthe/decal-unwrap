@@ -438,6 +438,17 @@ label.btn.disabled { opacity: .5; }
 #decal-edit { display: grid; gap: 6px; }
 #decal-edit[hidden] { display: none; }
 canvas.decal-cursor { cursor: move; }
+
+/* handles on the selected decal (3D view) */
+.decal-gizmo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.decal-gizmo[hidden] { display: none; }
+.decal-gizmo .gz-box { fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: 1; }
+.decal-gizmo .gz-stem { stroke: #ffffff; stroke-width: 1.5; }
+.decal-gizmo .gz-h { pointer-events: all; fill: #ffffff; stroke: #ff3b30; stroke-width: 2; touch-action: none; }
+.decal-gizmo .gz-h:hover { fill: #ffd5d2; }
+.decal-gizmo .gz-rot { cursor: grab; }
+.decal-gizmo .gz-rot:active { cursor: grabbing; }
+.decal-gizmo .gz-label { font: 600 12px var(--font-num); fill: #ffffff; text-anchor: middle; paint-order: stroke; stroke: rgba(8, 11, 16, .85); stroke-width: 3.5px; }
 </style>
 <div class="app" id="app">
   <aside class="side" id="side" aria-label="Controls" data-i18n-attr="aria-label:aria.controls">
@@ -845,6 +856,7 @@ canvas.decal-cursor { cursor: move; }
         <button type="button" data-view="fit" data-i18n="view.fit">Fit</button>
       </div>
       <svg class="overlay-3d" id="overlay-3d" aria-hidden="true"></svg>
+      <svg class="decal-gizmo" id="decal-gizmo" hidden></svg>
       <div class="hud mono" id="hud" aria-live="off"></div>
       <div class="gizmo" id="gizmo">
         <canvas id="gizmo-canvas" role="img" aria-label="View cube: click a face, edge or corner to look from there; drag it to orbit" title="View cube: click a face, edge or corner to look from there; drag it to orbit" data-i18n-attr="aria-label:aria.cube;title:aria.cube"></canvas>
@@ -5037,7 +5049,7 @@ const Scan = (() => {
       'h.model': 'Model', 'drop.title': 'Open 3D file…', 'drop.sub': 'or drop it on the 3D view · STL, OBJ, 3MF, PLY, GLB',
       'demo.panel': 'Sample panel', 'demo.cyl': 'Sample tube', 'lbl.units': 'Units', 'lbl.up': 'Up',
       'h.tools': 'Paint tools', 'aria.tool': 'Tool',
-      'tool.decal': "Decal", 'title.decalT': "Decals: drag one to move it on the surface, click a free spot to place the chosen image (D)", 'h.surface': "Surface & decals", 'note.surface': "See the print on the model before you cut: a texture over whole decal groups, and images stuck on like decals. Unwrap runs by itself when needed. A decal that runs over a seam continues on the piece on the other side, so the halves meet when stuck on.", 'surf.texNone': "No texture", 'surf.texOwn': "My image (repeat)…", 'lbl.surfTex': "Texture for the decal group", 'title.surfTex': "Cover the decal group with a texture (repeated)", 'lbl.surfScale': "Tile mm", 'title.surfScale': "Size of one tile of the pattern (mm)", 'lbl.surfTarget': "Apply the texture to", 'surf.group': "This group", 'surf.all': "All groups", 'btn.decalAdd': "+ Decal image…", 'title.decalAdd': "Choose an image, then click the model where it goes. You can also drag an image file onto the model.", 'decal.hint': "Drag an image onto the model to stick it on.", 'decal.place': "Click the model where the image goes.", 'decal.sel': "Drag the decal to move it · Delete removes it", 'btn.decalDup': "Duplicate", 'btn.decalDel': "Delete decal", 'view.print': "Print look", 'title.showPrint': "Show textures and decals on the model, as they will print", 'surf.needPaint': "Paint the decal area first (Brush or Fill): textures and decals go on painted groups.", 'surf.unwrapping': "Unwrapping, to show the print on the model…", 'decal.offPiece': "Drop the image on a painted decal area.", 'hud.decal': "drag a decal to move it · Delete removes", 'hint.d': "D (Decal)", 'hint.dD': "drag an image onto the model; drag a decal to move it",
+      'tool.decal': "Decal", 'title.decalT': "Decals: drag one to move it on the surface, click a free spot to place the chosen image (D)", 'h.surface': "Surface & decals", 'note.surface': "See the print on the model before you cut: a texture over whole decal groups, and images stuck on like decals. Unwrap runs by itself when needed. A decal that runs over a seam continues on the piece on the other side, so the halves meet when stuck on.", 'surf.texNone': "No texture", 'surf.texOwn': "My image (repeat)…", 'lbl.surfTex': "Texture for the decal group", 'title.surfTex': "Cover the decal group with a texture (repeated)", 'lbl.surfScale': "Tile mm", 'title.surfScale': "Size of one tile of the pattern (mm)", 'lbl.surfTarget': "Apply the texture to", 'surf.group': "This group", 'surf.all': "All groups", 'btn.decalAdd': "+ Decal image…", 'title.decalAdd': "Choose an image, then click the model where it goes. You can also drag an image file onto the model.", 'decal.hint': "Drag an image onto the model to stick it on.", 'decal.place': "Click the model where the image goes.", 'decal.sel': "Drag to move · corners resize · round knob rotates · Delete removes", 'btn.decalDup': "Duplicate", 'btn.decalDel': "Delete decal", 'view.print': "Print look", 'title.showPrint': "Show textures and decals on the model, as they will print", 'surf.needPaint': "Paint the decal area first (Brush or Fill): textures and decals go on painted groups.", 'surf.unwrapping': "Unwrapping, to show the print on the model…", 'decal.offPiece': "Drop the image on a painted decal area.", 'hud.decal': "drag a decal to move it · Delete removes", 'hint.d': "D (Decal)", 'decal.rotTip': "Drag to rotate (hold Shift for 15° steps)", 'hint.dD': "drag an image onto the model; drag a decal to move it",
       'tool.brush': 'Brush', 'tool.fill': 'Fill', 'tool.erase': 'Erase', 'tool.block': 'Block', 'tool.cut': 'Cut', 'tool.orbit': 'Orbit',
       'title.block': 'Paint an exclusion zone: brush and fill never select or spread into it (X)',
       'title.cut': 'Mark a cut: click points along the surface; the decal is slit along this line (C)',
@@ -5218,7 +5230,7 @@ const Scan = (() => {
       'h.model': 'Mô hình', 'drop.title': 'Mở file 3D…', 'drop.sub': 'hoặc kéo thả vào khung 3D · STL, OBJ, 3MF, PLY, GLB',
       'demo.panel': 'Mẫu tấm cong', 'demo.cyl': 'Mẫu ống trụ', 'lbl.units': 'Đơn vị', 'lbl.up': 'Trục lên',
       'h.tools': 'Công cụ tô', 'aria.tool': 'Công cụ',
-      'tool.decal': "Dán", 'title.decalT': "Decal: kéo decal để di chuyển trên bề mặt, bấm chỗ trống để dán ảnh đã chọn (D)", 'h.surface': "Phủ bề mặt & decal", 'note.surface': "Xem bản in ngay trên mô hình trước khi cắt: phủ texture cho cả nhóm decal, và dán ảnh lên như decal. Tự trải phẳng khi cần. Decal nằm vắt qua đường nối sẽ được in tiếp sang mảnh bên kia, dán vào là khớp nhau.", 'surf.texNone': "Không phủ", 'surf.texOwn': "Ảnh của tôi (lặp lại)…", 'lbl.surfTex': "Texture cho nhóm decal", 'title.surfTex': "Phủ texture (lặp lại) lên nhóm decal", 'lbl.surfScale': "Ô vân mm", 'title.surfScale': "Kích thước một ô vân lặp lại (mm)", 'lbl.surfTarget': "Phủ texture cho", 'surf.group': "Nhóm này", 'surf.all': "Mọi nhóm", 'btn.decalAdd': "+ Ảnh decal…", 'title.decalAdd': "Chọn ảnh rồi bấm lên mô hình chỗ muốn dán. Có thể kéo thả file ảnh thẳng lên mô hình.", 'decal.hint': "Kéo thả ảnh lên mô hình để dán.", 'decal.place': "Bấm lên mô hình chỗ muốn dán ảnh.", 'decal.sel': "Kéo decal để di chuyển · Delete để xóa", 'btn.decalDup': "Nhân bản", 'btn.decalDel': "Xóa decal", 'view.print': "Xem in", 'title.showPrint': "Hiện texture và decal trên mô hình, đúng như khi in", 'surf.needPaint': "Hãy tô vùng decal trước (Cọ hoặc Tô vùng): texture và decal chỉ phủ lên các nhóm đã tô.", 'surf.unwrapping': "Đang trải phẳng để hiện bản in lên mô hình…", 'decal.offPiece': "Hãy thả ảnh lên vùng decal đã tô.", 'hud.decal': "kéo decal để di chuyển · Delete để xóa", 'hint.d': "D (Dán)", 'hint.dD': "kéo thả ảnh lên mô hình; kéo decal để di chuyển",
+      'tool.decal': "Dán", 'title.decalT': "Decal: kéo decal để di chuyển trên bề mặt, bấm chỗ trống để dán ảnh đã chọn (D)", 'h.surface': "Phủ bề mặt & decal", 'note.surface': "Xem bản in ngay trên mô hình trước khi cắt: phủ texture cho cả nhóm decal, và dán ảnh lên như decal. Tự trải phẳng khi cần. Decal nằm vắt qua đường nối sẽ được in tiếp sang mảnh bên kia, dán vào là khớp nhau.", 'surf.texNone': "Không phủ", 'surf.texOwn': "Ảnh của tôi (lặp lại)…", 'lbl.surfTex': "Texture cho nhóm decal", 'title.surfTex': "Phủ texture (lặp lại) lên nhóm decal", 'lbl.surfScale': "Ô vân mm", 'title.surfScale': "Kích thước một ô vân lặp lại (mm)", 'lbl.surfTarget': "Phủ texture cho", 'surf.group': "Nhóm này", 'surf.all': "Mọi nhóm", 'btn.decalAdd': "+ Ảnh decal…", 'title.decalAdd': "Chọn ảnh rồi bấm lên mô hình chỗ muốn dán. Có thể kéo thả file ảnh thẳng lên mô hình.", 'decal.hint': "Kéo thả ảnh lên mô hình để dán.", 'decal.place': "Bấm lên mô hình chỗ muốn dán ảnh.", 'decal.sel': "Kéo để di chuyển · góc để đổi cỡ · núm tròn để xoay · Delete để xóa", 'btn.decalDup': "Nhân bản", 'btn.decalDel': "Xóa decal", 'view.print': "Xem in", 'title.showPrint': "Hiện texture và decal trên mô hình, đúng như khi in", 'surf.needPaint': "Hãy tô vùng decal trước (Cọ hoặc Tô vùng): texture và decal chỉ phủ lên các nhóm đã tô.", 'surf.unwrapping': "Đang trải phẳng để hiện bản in lên mô hình…", 'decal.offPiece': "Hãy thả ảnh lên vùng decal đã tô.", 'hud.decal': "kéo decal để di chuyển · Delete để xóa", 'hint.d': "D (Dán)", 'decal.rotTip': "Kéo để xoay (giữ Shift để xoay từng 15°)", 'hint.dD': "kéo thả ảnh lên mô hình; kéo decal để di chuyển",
       'tool.brush': 'Cọ', 'tool.fill': 'Tô vùng', 'tool.erase': 'Tẩy', 'tool.block': 'Chặn', 'tool.cut': 'Cắt', 'tool.orbit': 'Xoay',
       'title.block': 'Vẽ vùng loại trừ: cọ và tô vùng không bao giờ chọn hay lan vào đây (X)',
       'title.cut': 'Đánh dấu vết cắt: bấm các điểm trên bề mặt; decal được xẻ dọc theo đường này (C)',
@@ -5508,6 +5520,7 @@ const Scan = (() => {
     renderer.render(scene, camera);
     placePieceTags();
     drawOverlay();
+    if (typeof drawDecalGizmo === 'function') drawDecalGizmo();
     renderGizmo();
   });
 
@@ -7709,6 +7722,114 @@ const Scan = (() => {
     syncDecalUI();
     relayout();
   });
+
+
+  // ---- on-model handles for the selected decal: corners resize, the knob rotates ----
+  const dgEl = $('decal-gizmo');
+  let dgKey = '', dgPts = null, dgDrag = null;
+
+  // a flat point (u, v) of piece p back on the model (null when it is off the piece)
+  function uvTo3D(p, u, v) {
+    const F = p.F, uv = p.uv, P = p.P, n = p.faceIds.length;
+    for (let i = 0; i < n; i++) {
+      const a = F[3 * i], b = F[3 * i + 1], c = F[3 * i + 2];
+      const ax = uv[2 * a], ay = uv[2 * a + 1], bx = uv[2 * b] - ax, by = uv[2 * b + 1] - ay, cx = uv[2 * c] - ax, cy = uv[2 * c + 1] - ay;
+      const det = bx * cy - by * cx;
+      if (!det) continue;
+      const qx = u - ax, qy = v - ay, s = (qx * cy - qy * cx) / det, t = (bx * qy - by * qx) / det;
+      if (s < -1e-6 || t < -1e-6 || s + t > 1 + 1e-6) continue;
+      return [0, 1, 2].map((k) => P[3 * a + k] + s * (P[3 * b + k] - P[3 * a + k]) + t * (P[3 * c + k] - P[3 * a + k]));
+    }
+    return null;
+  }
+
+  // 3D spots of the decal's corners, top middle and centre (cached until the decal changes)
+  function decalHandles(d) {
+    const pl = d.pl, key = `${d.id}|${d.f}|${d.b}|${d.s}|${d.rot}|${pl && pl.x}|${pl && pl.y}`;
+    if (key === dgKey) return dgPts;
+    dgKey = key; dgPts = null;
+    const fu = pl && faceUV(d.f);
+    if (!fu) return null;
+    const M = Layout.artMatrix({ frame: IDENT }, pl, 0, 0);
+    const toUV = (px, py) => [M.a * px + M.c * py + M.e, M.b * px + M.d * py + M.f];
+    // flat-to-3D map of the anchor face, for spots that fall off the piece (holes, edges)
+    const { uv } = fu, A0 = corner(d.f, 0), e1 = sub3(corner(d.f, 1), A0), e2 = sub3(corner(d.f, 2), A0);
+    const du1 = uv[2] - uv[0], dv1 = uv[3] - uv[1], du2 = uv[4] - uv[0], dv2 = uv[5] - uv[1], det = du1 * dv2 - du2 * dv1 || 1;
+    const A = anchorPoint(d);
+    const flat = (u, v) => {
+      const qu = u - pl.x, qv = v - pl.y, s = (qu * dv2 - qv * du2) / det, t = (du1 * qv - dv1 * qu) / det;
+      return [0, 1, 2].map((k) => A[k] + s * e1[k] + t * e2[k]);
+    };
+    const at = (px, py) => { const [u, v] = toUV(px, py); return uvTo3D(fu.p, u, v) || flat(u, v); };
+    const { iw, ih } = pl;
+    dgPts = { corners: [at(0, 0), at(iw, 0), at(iw, ih), at(0, ih)], top: at(iw / 2, 0), centre: A };
+    return dgPts;
+  }
+
+  const dgScreen = (p) => {
+    const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera);
+    return { x: ((v.x + 1) / 2) * host.clientWidth, y: ((1 - v.y) / 2) * host.clientHeight, behind: v.z > 1 };
+  };
+
+  function drawDecalGizmo() {
+    const d = surf.on && state.tool === 'decal' && currentTab === '3d' ? decals.find((q) => q.id === decalSel) : null;
+    const H = d && d.pl ? decalHandles(d) : null;
+    if (!H) { if (!dgEl.hasAttribute('hidden')) { dgEl.setAttribute('hidden', ''); dgEl.innerHTML = ''; } return; }
+    const c = H.corners.map(dgScreen), t = dgScreen(H.top), o = dgScreen(H.centre);
+    if (o.behind) { dgEl.setAttribute('hidden', ''); return; }
+    // the knob sits 26 px beyond the top edge, away from the centre
+    const dx = t.x - o.x, dy = t.y - o.y, l = Math.hypot(dx, dy) || 1, kx = t.x + (dx / l) * 26, ky = t.y + (dy / l) * 26;
+    const cur = ['nwse-resize', 'nesw-resize', 'nwse-resize', 'nesw-resize'];
+    dgEl.removeAttribute('hidden');
+    dgEl.innerHTML = `<polygon class="gz-box" points="${c.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}"/>`
+      + `<line class="gz-stem" x1="${t.x.toFixed(1)}" y1="${t.y.toFixed(1)}" x2="${kx.toFixed(1)}" y2="${ky.toFixed(1)}"/>`
+      + c.map((p, i) => `<rect class="gz-h" data-h="s${i}" style="cursor:${cur[i]}" x="${(p.x - 5).toFixed(1)}" y="${(p.y - 5).toFixed(1)}" width="10" height="10" rx="2"/>`).join('')
+      + `<circle class="gz-h gz-rot" data-h="r" cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="7"><title>${i18n('decal.rotTip')}</title></circle>`;
+    dgDrag && dgDrag.label && (dgEl.innerHTML += `<text class="gz-label" x="${o.x.toFixed(1)}" y="${(o.y - 4).toFixed(1)}">${dgDrag.label}</text>`);
+  }
+
+  dgEl.addEventListener('pointerdown', (e) => {
+    const h = e.target.closest('[data-h]');
+    const d = decals.find((q) => q.id === decalSel);
+    if (!h || !d || !dgPts) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = host.getBoundingClientRect(), o = dgScreen(dgPts.centre);
+    const x = e.clientX - r.left - o.x, y = e.clientY - r.top - o.y;
+    // the decal faces the camera, or we look at it from behind (turning feels reversed)
+    const n = d.nv, cam = camera.position, A = dgPts.centre;
+    const facing = n[0] * (cam.x - A[0]) + n[1] * (cam.y - A[1]) + n[2] * (cam.z - A[2]) >= 0;
+    dgDrag = { id: e.pointerId, kind: h.dataset.h[0], d, o, r0: Math.hypot(x, y) || 1, a0: Math.atan2(-y, x), s0: d.s, rot0: d.rot || 0, sign: facing ? 1 : -1, label: '' };
+    // the handles are redrawn every frame, so the drag is followed on the window
+    window.addEventListener('pointermove', dgMove);
+    window.addEventListener('pointerup', endDg);
+    window.addEventListener('pointercancel', endDg);
+  });
+  function dgMove(e) {
+    if (!dgDrag || e.pointerId !== dgDrag.id) return;
+    const r = host.getBoundingClientRect(), x = e.clientX - r.left - dgDrag.o.x, y = e.clientY - r.top - dgDrag.o.y, d = dgDrag.d;
+    if (dgDrag.kind === 's') {
+      // corner: size follows the distance from the centre, the shape keeps its proportions
+      d.s = Math.max(2, Math.min(2000, +(dgDrag.s0 * (Math.hypot(x, y) / dgDrag.r0)).toFixed(1)));
+      dgDrag.label = `${d.s.toFixed(1)} mm`;
+    } else {
+      let a = dgDrag.rot0 + (dgDrag.sign * ((Math.atan2(-y, x) - dgDrag.a0) * 180)) / Math.PI;
+      a = ((((a + 180) % 360) + 360) % 360) - 180;
+      a = e.shiftKey ? Math.round(a / 15) * 15 : Math.round(a);
+      d.rot = a;
+      dgDrag.label = `${a}°`;
+    }
+    resolveDecals();
+    scheduleSurface();
+    syncDecalUI();
+  }
+  function endDg(e) {
+    if (!dgDrag || e.pointerId !== dgDrag.id) return;
+    dgDrag = null;
+    window.removeEventListener('pointermove', dgMove);
+    window.removeEventListener('pointerup', endDg);
+    window.removeEventListener('pointercancel', endDg);
+    relayout();
+  }
 
   // click a piece to select it; drag its artwork to move it
   let artDrag = null;
