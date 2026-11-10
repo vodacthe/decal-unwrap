@@ -81,6 +81,9 @@
           <button type="button" class="seg-btn" data-tool="orbit" id="tool-orbit" aria-pressed="false" title="Orbit the view (V)" data-i18n-attr="title:title.orbitT">
             <svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="7.5" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 4.5l2.5 1.8-1 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/></svg>
             <span data-i18n="tool.orbit">Orbit</span></button>
+          <button type="button" class="seg-btn" data-tool="decal" id="tool-decal" aria-pressed="false" title="Decals: drag one to move it on the surface, click a free spot to place the chosen image (D)" data-i18n-attr="title:title.decalT">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 13l3.5-3.5 2.5 2.5 2-2 2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 15l3-3v-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span data-i18n="tool.decal">Decal</span></button>
         </div>
         <label class="srow"><span data-i18n="lbl.brush">Brush</span>
           <input type="range" id="brush-size" min="0.1" max="50" step="0.1" value="5">
@@ -107,6 +110,7 @@
             <dt data-i18n="hint.shift">Hold Shift while painting</dt><dd data-i18n="hint.shiftD">erase</dd>
             <dt data-i18n="hint.x">X (Block)</dt><dd data-i18n="hint.xD">paint an exclusion zone; hold Shift to unblock</dd>
             <dt data-i18n="hint.c">C (Cut)</dt><dd data-i18n="hint.cD">click points to draw a slit; double-click, Enter or Esc ends it; Shift+click removes</dd>
+            <dt data-i18n="hint.d">D (Decal)</dt><dd data-i18n="hint.dD">drag an image onto the model; drag a decal to move it</dd>
             <dt>[ &nbsp; ]</dt><dd data-i18n="hint.bracketD">smaller / larger brush</dd>
             <dt>1 – 8</dt><dd data-i18n="hint.numD">pick decal group</dd>
             <dt>Ctrl+Z / Ctrl+Y</dt><dd data-i18n="hint.undoD">undo / redo</dd>
@@ -137,6 +141,57 @@
             <button type="button" class="btn icon" id="clear-block" title="Unblock all" aria-label="Unblock all" data-i18n-attr="title:btn.unblock;aria-label:btn.unblock">✕</button></span>
           <span class="stat"><span class="cut-swatch" aria-hidden="true"></span><span class="block-info" id="cut-info">Cuts: none</span>
             <button type="button" class="btn icon" id="clear-cuts" title="Remove cuts" aria-label="Remove cuts" data-i18n-attr="title:btn.removeCuts;aria-label:btn.removeCuts">✕</button></span>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-surface">
+        <div class="sec-head">
+          <h2 id="h-surface" data-i18n="h.surface" title="See the print on the model before you cut: a texture over whole decal groups, and images stuck on like decals. Unwrap runs by itself when needed." data-i18n-attr="title:note.surface">Surface &amp; decals</h2>
+        </div>
+        <div class="row tex-row">
+          <select id="surf-tex" aria-label="Texture for the decal group" title="Cover the decal group with a texture (repeated)" data-i18n-attr="aria-label:lbl.surfTex;title:title.surfTex">
+            <option value="" data-i18n="surf.texNone">No texture</option>
+            <option value="carbon" data-i18n="tex.carbon">Carbon fiber</option>
+            <optgroup label="Leather" data-i18n-attr="label:tex.leather">
+              <option value="leather1" data-i18n="tex.leather1">Leather 1</option>
+              <option value="leather2" data-i18n="tex.leather2">Leather 2</option>
+              <option value="leather3" data-i18n="tex.leather3">Leather 3</option>
+              <option value="leather4" data-i18n="tex.leather4">Leather 4</option>
+            </optgroup>
+            <optgroup label="Metal" data-i18n-attr="label:tex.metal">
+              <option value="metal1" data-i18n="tex.metal1">Metal 1</option>
+              <option value="metal2" data-i18n="tex.metal2">Metal 2</option>
+              <option value="metal3" data-i18n="tex.metal3">Metal 3</option>
+              <option value="metal4" data-i18n="tex.metal4">Metal 4</option>
+            </optgroup>
+            <optgroup label="Wood" data-i18n-attr="label:tex.wood">
+              <option value="wood1" data-i18n="tex.wood1">Wood 1</option>
+              <option value="wood2" data-i18n="tex.wood2">Wood 2</option>
+              <option value="wood3" data-i18n="tex.wood3">Wood 3</option>
+              <option value="wood4" data-i18n="tex.wood4">Wood 4</option>
+            </optgroup>
+            <option value="custom" data-i18n="surf.texOwn">My image (repeat)…</option>
+                    </select>
+          <label class="inl" title="Size of one tile of the pattern (mm)" data-i18n-attr="title:title.surfScale"><span data-i18n="lbl.surfScale">Tile mm</span><input type="number" id="surf-scale" min="2" max="1000" step="1" value="22"></label>
+        </div>
+        <div class="row two">
+          <select id="surf-target" aria-label="Apply the texture to" data-i18n-attr="aria-label:lbl.surfTarget">
+            <option value="group" selected data-i18n="surf.group">This group</option>
+            <option value="all" data-i18n="surf.all">All groups</option>
+          </select>
+          <label class="btn sm" id="decal-add" title="Choose an image, then click the model where it goes. You can also drag an image file onto the model." data-i18n-attr="title:title.decalAdd"><input type="file" id="decal-input" accept="image/*" hidden><input type="file" id="surf-input" accept="image/*" hidden><span data-i18n="btn.decalAdd">+ Decal image…</span></label>
+        </div>
+        <p class="hint" id="decal-hint" data-i18n="decal.hint">Drag an image onto the model to stick it on.</p>
+        <div id="decal-edit" hidden>
+          <div class="row three stk">
+            <label class="inl"><span data-i18n="lbl.artSize">Width mm</span><input type="number" id="decal-size" min="1" max="2000" step="1" value="40"></label>
+            <label class="inl"><span data-i18n="lbl.artRot">Rotate °</span><input type="number" id="decal-rot" min="-180" max="180" step="5" value="0"></label>
+            <label class="inl"><span data-i18n="lbl.artOp">Opacity %</span><input type="number" id="decal-op" min="5" max="100" step="5" value="100"></label>
+          </div>
+          <div class="row two">
+            <button type="button" class="btn sm" id="decal-dup" data-i18n="btn.decalDup">Duplicate</button>
+            <button type="button" class="btn sm" id="decal-del" data-i18n="btn.decalDel">Delete decal</button>
+          </div>
         </div>
       </section>
 
@@ -343,6 +398,7 @@
       <div class="piece-labels" id="piece-labels" aria-hidden="true"></div>
       <div class="viewbar" id="viewbar" role="group" aria-label="View" data-i18n-attr="aria-label:aria.view">
         <button type="button" id="show-pieces" aria-pressed="false" hidden data-i18n="view.pieces">Show pieces</button>
+        <button type="button" id="show-print" aria-pressed="false" hidden title="Show textures and decals on the model, as they will print" data-i18n="view.print" data-i18n-attr="title:title.showPrint">Print look</button>
         <button type="button" id="show-dims" aria-pressed="false" title="Show the model's length, width and height in mm" data-i18n="view.dims" data-i18n-attr="title:title.dims">Size</button>
         <button type="button" id="measure" aria-pressed="false" title="Click two points on the model to measure the distance (snaps to corners). Esc clears." data-i18n="view.measure" data-i18n-attr="title:title.measure">Measure</button>
         <button type="button" data-view="front" data-i18n="view.front">Front</button>

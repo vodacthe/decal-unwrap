@@ -15,6 +15,7 @@
       'h.model': 'Model', 'drop.title': 'Open 3D file…', 'drop.sub': 'or drop it on the 3D view · STL, OBJ, 3MF, PLY, GLB',
       'demo.panel': 'Sample panel', 'demo.cyl': 'Sample tube', 'lbl.units': 'Units', 'lbl.up': 'Up',
       'h.tools': 'Paint tools', 'aria.tool': 'Tool',
+      'tool.decal': "Decal", 'title.decalT': "Decals: drag one to move it on the surface, click a free spot to place the chosen image (D)", 'h.surface': "Surface & decals", 'note.surface': "See the print on the model before you cut: a texture over whole decal groups, and images stuck on like decals. Unwrap runs by itself when needed. A decal that runs over a seam continues on the piece on the other side, so the halves meet when stuck on.", 'surf.texNone': "No texture", 'surf.texOwn': "My image (repeat)…", 'lbl.surfTex': "Texture for the decal group", 'title.surfTex': "Cover the decal group with a texture (repeated)", 'lbl.surfScale': "Tile mm", 'title.surfScale': "Size of one tile of the pattern (mm)", 'lbl.surfTarget': "Apply the texture to", 'surf.group': "This group", 'surf.all': "All groups", 'btn.decalAdd': "+ Decal image…", 'title.decalAdd': "Choose an image, then click the model where it goes. You can also drag an image file onto the model.", 'decal.hint': "Drag an image onto the model to stick it on.", 'decal.place': "Click the model where the image goes.", 'decal.sel': "Drag the decal to move it · Delete removes it", 'btn.decalDup': "Duplicate", 'btn.decalDel': "Delete decal", 'view.print': "Print look", 'title.showPrint': "Show textures and decals on the model, as they will print", 'surf.needPaint': "Paint the decal area first (Brush or Fill): textures and decals go on painted groups.", 'surf.unwrapping': "Unwrapping, to show the print on the model…", 'decal.offPiece': "Drop the image on a painted decal area.", 'hud.decal': "drag a decal to move it · Delete removes", 'hint.d': "D (Decal)", 'hint.dD': "drag an image onto the model; drag a decal to move it",
       'tool.brush': 'Brush', 'tool.fill': 'Fill', 'tool.erase': 'Erase', 'tool.block': 'Block', 'tool.cut': 'Cut', 'tool.orbit': 'Orbit',
       'title.block': 'Paint an exclusion zone: brush and fill never select or spread into it (X)',
       'title.cut': 'Mark a cut: click points along the surface; the decal is slit along this line (C)',
@@ -195,6 +196,7 @@
       'h.model': 'Mô hình', 'drop.title': 'Mở file 3D…', 'drop.sub': 'hoặc kéo thả vào khung 3D · STL, OBJ, 3MF, PLY, GLB',
       'demo.panel': 'Mẫu tấm cong', 'demo.cyl': 'Mẫu ống trụ', 'lbl.units': 'Đơn vị', 'lbl.up': 'Trục lên',
       'h.tools': 'Công cụ tô', 'aria.tool': 'Công cụ',
+      'tool.decal': "Dán", 'title.decalT': "Decal: kéo decal để di chuyển trên bề mặt, bấm chỗ trống để dán ảnh đã chọn (D)", 'h.surface': "Phủ bề mặt & decal", 'note.surface': "Xem bản in ngay trên mô hình trước khi cắt: phủ texture cho cả nhóm decal, và dán ảnh lên như decal. Tự trải phẳng khi cần. Decal nằm vắt qua đường nối sẽ được in tiếp sang mảnh bên kia, dán vào là khớp nhau.", 'surf.texNone': "Không phủ", 'surf.texOwn': "Ảnh của tôi (lặp lại)…", 'lbl.surfTex': "Texture cho nhóm decal", 'title.surfTex': "Phủ texture (lặp lại) lên nhóm decal", 'lbl.surfScale': "Ô vân mm", 'title.surfScale': "Kích thước một ô vân lặp lại (mm)", 'lbl.surfTarget': "Phủ texture cho", 'surf.group': "Nhóm này", 'surf.all': "Mọi nhóm", 'btn.decalAdd': "+ Ảnh decal…", 'title.decalAdd': "Chọn ảnh rồi bấm lên mô hình chỗ muốn dán. Có thể kéo thả file ảnh thẳng lên mô hình.", 'decal.hint': "Kéo thả ảnh lên mô hình để dán.", 'decal.place': "Bấm lên mô hình chỗ muốn dán ảnh.", 'decal.sel': "Kéo decal để di chuyển · Delete để xóa", 'btn.decalDup': "Nhân bản", 'btn.decalDel': "Xóa decal", 'view.print': "Xem in", 'title.showPrint': "Hiện texture và decal trên mô hình, đúng như khi in", 'surf.needPaint': "Hãy tô vùng decal trước (Cọ hoặc Tô vùng): texture và decal chỉ phủ lên các nhóm đã tô.", 'surf.unwrapping': "Đang trải phẳng để hiện bản in lên mô hình…", 'decal.offPiece': "Hãy thả ảnh lên vùng decal đã tô.", 'hud.decal': "kéo decal để di chuyển · Delete để xóa", 'hint.d': "D (Dán)", 'hint.dD': "kéo thả ảnh lên mô hình; kéo decal để di chuyển",
       'tool.brush': 'Cọ', 'tool.fill': 'Tô vùng', 'tool.erase': 'Tẩy', 'tool.block': 'Chặn', 'tool.cut': 'Cắt', 'tool.orbit': 'Xoay',
       'title.block': 'Vẽ vùng loại trừ: cọ và tô vùng không bao giờ chọn hay lan vào đây (X)',
       'title.cut': 'Đánh dấu vết cắt: bấm các điểm trên bề mặt; decal được xẻ dọc theo đường này (C)',
@@ -515,6 +517,7 @@
   let dirtyMin = Infinity, dirtyMax = -1;
   function faceColor(f) {
     if (state.blocked[f]) return maskColors[f & 1];
+    if (surf.on && surf.printed && pieceOf && pieceOf[f] >= 0 && surf.printed[pieceOf[f]] && state.pieces[pieceOf[f]].group === state.faceGroup[f]) return WHITE_RGB;
     if (showPieces && pieceOf && pieceOf[f] >= 0) return pieceColors[pieceOf[f]];
     return colorTable[state.faceGroup[f]];
   }
@@ -566,13 +569,18 @@
   // ------------------------------------------------------- piece overlay ---
   // After Unwrap, the 3D view can tint every piece and tag it with its number,
   // so printed pieces can be matched to where they go on the model.
-  let showPieces = false, pieceOf = null, pieceColors = [], pieceAnchors = [];
+  let showPieces = false, pieceOf = null, localOf = null, pieceColors = [], pieceAnchors = [];
+  // 3D print look (textures and decals on the model); see "surface" below
+  const surf = { on: false, printed: null };
+  const WHITE_RGB = [255, 255, 255];
   const tagHost = $('piece-labels');
   const tmpV = new THREE.Vector3();
 
   function buildPieceView() {
     const m = state.model;
     pieceOf = new Int32Array(m.nF).fill(-1);
+    localOf = new Int32Array(m.nF).fill(-1);
+    state.pieces.forEach((p) => { p.faceIds.forEach((f, k) => { localOf[f] = k; }); });
     pieceColors = []; pieceAnchors = [];
     tagHost.innerHTML = '';
     state.pieces.forEach((p, i) => {
@@ -633,8 +641,12 @@
   }
 
   function clearPieceView() {
-    pieceOf = null; pieceAnchors = []; seamAnchors = []; tagHost.innerHTML = '';
+    pieceOf = null; localOf = null; pieceAnchors = []; seamAnchors = []; tagHost.innerHTML = '';
     $('show-pieces').hidden = true;
+    $('show-print').hidden = true;
+    surf.on = false; surf.printed = null;
+    $('show-print').setAttribute('aria-pressed', 'false');
+    if (material.map) { material.map = null; material.needsUpdate = true; }
     setShowPieces(false);
   }
 
@@ -698,6 +710,9 @@
     vGraph = null; vNormals = null; cutLast = -1;
     if (!keep) { state.undo = []; state.redo = []; }
     const geom = Geo.buildDisplayGeometry(model, 30);
+    geom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(model.nF * 6), 2));
+    if (!keep) { decals = []; decalSel = null; pendingDecal = null; }
+    if (atlas) { atlas.tex.dispose(); atlas = null; }
     if (bvh) geom.boundsTree = new bvh.MeshBVH(geom);
     state.geom = geom;
     state.mesh = new THREE.Mesh(geom, material);
@@ -720,6 +735,7 @@
     $('empty-3d').hidden = true;
     state.pieces = null; state.layout = null;
     measurePts = [];
+    syncDecalUI();
     clearPieceView();
     showPreview([]);
     rebuildSeamLines();
@@ -1609,7 +1625,11 @@
   }
 
   function updateCursor(hit) {
-    if (measuring) { ring.visible = false; dot.visible = false; return; }
+    if (measuring || state.tool === 'decal') {
+      ring.visible = false; dot.visible = false;
+      if (state.tool === 'decal' && !measuring) canvas.style.cursor = pendingDecal ? 'copy' : hit && pieceOf && decalAt(hit) ? 'move' : 'default';
+      return;
+    }
     const pointTool = state.tool === 'fill' || state.tool === 'cut';
     const showRing = hit && paintTool() && !pointTool;
     ring.visible = !!showRing;
@@ -1639,6 +1659,7 @@
     if (!state.model || state.generating || !paintTool()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     shiftDown = e.shiftKey;
+    if (state.tool === 'decal') { decalDown(e); return; }
     const hit = pick(e.clientX, e.clientY);
     if (state.tool === 'cut') { if (hit) cutClick(hit, e.shiftKey); return; }
     if (state.tool === 'fill') {
@@ -1660,6 +1681,7 @@
   canvas.addEventListener('pointermove', (e) => {
     if (!state.model) return;
     shiftDown = e.shiftKey;
+    if (decalMove(e)) return;
     if (painting && touches.size <= 1) {
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
       const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 4));
@@ -1677,6 +1699,7 @@
   });
   const endStroke = (e) => {
     if (e && e.pointerType === 'touch') touches.delete(e.pointerId);
+    decalUp(e);
     if (painting) { painting = false; updateCounts(); }
   };
   canvas.addEventListener('pointerup', endStroke);
@@ -1694,6 +1717,7 @@
     const parts = [spaceDown ? i18n('hud.orbitSpace') : i18n(`tool.${state.tool}`)];
     if (state.tool === 'cut') parts.push(i18n(cutLast >= 0 ? 'hud.cutNext' : 'hud.cutStart'));
     else if (state.tool === 'block') parts.push(i18n('hud.block'));
+    else if (state.tool === 'decal') parts.push(i18n('hud.decal'));
     else if (state.tool !== 'orbit') parts.push(state.tool === 'erase' ? i18n('hud.erase') : i18n('hud.group', { g: state.group }));
     if (state.tool === 'brush' || state.tool === 'erase' || state.tool === 'block') parts.push(`r = ${state.brushR.toFixed(1)} mm`);
     parts.push(i18n(state.tool === 'orbit' ? 'hud.orbitMouse' : 'hud.paintMouse'));
@@ -1702,6 +1726,7 @@
 
   function setTool(t) {
     if (state.tool === 'cut' && t !== 'cut' && state.model) endCut();
+    if (t !== 'decal' && (pendingDecal || decalSel !== null)) { pendingDecal = null; decalSel = null; syncDecalUI(); scheduleSurface(); }
     state.tool = t;
     document.querySelectorAll('#tools .seg-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
     applyControlMode();
@@ -1744,6 +1769,7 @@
     if (state.blocked) for (let f = 0; f < state.blocked.length; f++) nb += state.blocked[f];
     $('block-info').textContent = nb ? i18n('blocked.count', { n: fmtInt(nb) }) : i18n('blocked.none');
     $('clear-block').disabled = !nb;
+    syncSurfUI();
     syncUndoButtons();
     scheduleAutosave();
   }
@@ -1789,7 +1815,8 @@
   v3.addEventListener('drop', (e) => {
     e.preventDefault(); dragDepth = 0; $('drop-veil').hidden = true;
     const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) openFile(f);
+    if (f && /^image\//.test(f.type) && state.model) decalFile(f, e.clientX, e.clientY);
+    else if (f) openFile(f);
   });
   const dz = $('drop-zone');
   dz.addEventListener('dragover', (e) => e.preventDefault());
@@ -1816,6 +1843,9 @@
     else if (k === 'v') setTool('orbit');
     else if (k === 'x') setTool('block');
     else if (k === 'c') setTool('cut');
+    else if (k === 'd') setTool('decal');
+    else if ((k === 'delete' || k === 'backspace') && state.tool === 'decal' && decalSel !== null) { e.preventDefault(); deleteDecal(); }
+    else if (k === 'escape' && state.tool === 'decal' && (pendingDecal || decalSel !== null)) { pendingDecal = null; decalSel = null; syncDecalUI(); scheduleSurface(); }
     else if ((k === 'enter' || k === 'escape') && state.tool === 'cut') endCut();
     else if (k === '[' || k === ']') {
       const bs = $('brush-size');
@@ -1830,8 +1860,9 @@
   window.addEventListener('blur', () => { if (spaceDown) { spaceDown = false; applyControlMode(); } shiftDown = false; });
 
   // ------------------------------------------------------------- generate ---
-  async function generate() {
+  async function generate(stay) {
     if (!state.model || state.generating) return;
+    const sig = paintSig();
     state.generating = true; state.cancel = false;
     $('generate').disabled = true;
     $('progress').hidden = false;
@@ -1849,12 +1880,13 @@
         () => state.cancel,
       );
       state.pieces = res.pieces;
+      state.piecesSig = sig;
       state.flatWarnings = res.warnings;
       artSel = null;
-      if (res.pieces.length) { buildPieceView(); $('show-pieces').hidden = false; setShowPieces(true); }
+      if (res.pieces.length) { buildPieceView(); $('show-pieces').hidden = false; $('show-print').hidden = false; setShowPieces(!stay); }
       if (!res.pieces.length) { toast(res.warnings[0] || i18n('msg.noPieces'), 'bad'); return; }
       relayout();
-      switchTab('2d');
+      if (!stay) switchTab('2d');
       toast(res.pieces.length === 1 ? i18n('msg.unwrapped1') : i18n('msg.unwrapped', { n: res.pieces.length }));
     } catch (e) {
       if (e && e.message === 'cancelled') toast(i18n('msg.cancelled'));
@@ -1865,7 +1897,7 @@
       updateCounts();
     }
   }
-  $('generate').addEventListener('click', generate);
+  $('generate').addEventListener('click', () => generate());
   $('cancel').addEventListener('click', () => { state.cancel = true; });
 
   // ------------------------------------------------------------------ tabs ---
@@ -1890,9 +1922,12 @@
   }
 
   function relayout() {
-    if (!state.pieces || !state.pieces.length) { state.layout = null; render2D(); return; }
+    if (!state.pieces || !state.pieces.length) { state.layout = null; scheduleSurface(); render2D(); return; }
     settings.fileName = state.rawName;
     settings.artwork = artworkStore;
+    settings.groupArt = groupArt;
+    settings.decals = resolveDecals();
+    scheduleSurface();
     try {
       state.layout = Layout.build(state.pieces, settings);
       if (pieceOf) buildSeamTags();
@@ -2112,6 +2147,547 @@
     relayout();
   });
 
+
+  // ------------------------------------------- surface: textures & decals ----
+  // See the print on the model before cutting. A texture covers whole decal
+  // groups (a repeated pattern); a decal is an image stuck on one spot. Both are
+  // drawn on the unwrapped pieces (their flat UV space, in mm), so the 3D view
+  // shows exactly what prints. A decal is anchored to a face of the model, not
+  // to a piece, so it stays put when the model is unwrapped again.
+  let groupArt = {};                 // group -> { img, iw, ih, s, x, y, r, op, tile, tex }
+  let decals = [];                   // { id, img, iw, ih, s, rot, op, f, b:[3], up:[3], nv:[3] }
+  let decalSel = null, decalSeq = 1, pendingDecal = null, decalDrag = null;
+  let resolved = {};                 // piece id -> decal placements on that piece
+  let atlas = null;                  // { cv, g, tex, k, cells, W, H }
+  const ATLAS_PAD = 1.5;             // mm around each piece in the atlas
+  const IDENT = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+
+  function paintSig() {
+    let h = 0x811c9dc5;
+    const mix = (a) => { for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 0x01000193); } };
+    mix(state.faceGroup); mix(state.seams); mix(state.blocked);
+    return `${state.faceGroup.length}:${h >>> 0}`;
+  }
+
+  // pieces that match the current painting, unwrapping (staying in 3D) if needed
+  async function ensurePieces() {
+    if (!state.model) return false;
+    if (!state.faceGroup.some((g) => g)) { toast(i18n('surf.needPaint'), 'bad'); return false; }
+    if (state.pieces && state.pieces.length && pieceOf && state.piecesSig === paintSig()) return true;
+    if (state.generating) return false;
+    toast(i18n('surf.unwrapping'));
+    await generate(true);
+    return !!(state.pieces && state.pieces.length && pieceOf);
+  }
+
+  // images by data URL, loaded once; the view repaints when one arrives
+  const imgCache = new Map();
+  function imgEl(href) {
+    let e = imgCache.get(href);
+    if (!e) { e = new Image(); e.onload = () => scheduleSurface(); e.src = href; imgCache.set(href, e); }
+    return e.complete && e.naturalWidth ? e : null;
+  }
+
+  // the flat (UV, mm) corners of model face f on its piece, in the face's corner order
+  function faceUV(f) {
+    const i = pieceOf ? pieceOf[f] : -1;
+    if (i < 0 || !localOf) return null;
+    const p = state.pieces[i], lf = localOf[f], uv = new Float64Array(6);
+    for (let k = 0; k < 3; k++) { const v = p.F[3 * lf + k]; uv[2 * k] = p.uv[2 * v]; uv[2 * k + 1] = p.uv[2 * v + 1]; }
+    return { i, p, uv };
+  }
+  const corner = (f, k) => { const m = state.model, v = 3 * m.tri[3 * f + k]; return [m.pos[v], m.pos[v + 1], m.pos[v + 2]]; };
+  const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+  function bary(f, p) {
+    const A = corner(f, 0), e1 = sub3(corner(f, 1), A), e2 = sub3(corner(f, 2), A), q = sub3(p, A);
+    const d00 = dot3(e1, e1), d01 = dot3(e1, e2), d11 = dot3(e2, e2), d20 = dot3(q, e1), d21 = dot3(q, e2);
+    const den = d00 * d11 - d01 * d01 || 1;
+    const v = (d11 * d20 - d01 * d21) / den, w = (d00 * d21 - d01 * d20) / den;
+    return [1 - v - w, v, w];
+  }
+  const anchorPoint = (d) => { const a = corner(d.f, 0), b = corner(d.f, 1), c = corner(d.f, 2); return [0, 1, 2].map((k) => d.b[0] * a[k] + d.b[1] * b[k] + d.b[2] * c[k]); };
+
+  // anchor data for a hit on the model: face, barycentric point, the side we look from
+  function anchorAt(hit) {
+    const N = state.model.fN, f = hit.f;
+    const n = new THREE.Vector3(N[3 * f], N[3 * f + 1], N[3 * f + 2]);
+    if (n.dot(hit.dir) > 0) n.negate();
+    return { f, b: bary(f, hit.point.toArray()), nv: n.toArray() };
+  }
+
+  // A decal's placement on its piece: centre (x, y), width s, rotation r, mirrored fx
+  function placeDecal(d) {
+    const fu = faceUV(d.f);
+    if (!fu) return null;
+    const { uv } = fu, A = corner(d.f, 0), e1 = sub3(corner(d.f, 1), A), e2 = sub3(corner(d.f, 2), A);
+    const x = d.b[0] * uv[0] + d.b[1] * uv[2] + d.b[2] * uv[4], y = d.b[0] * uv[1] + d.b[1] * uv[3] + d.b[2] * uv[5];
+    // "up" turned by the decal's rotation about the normal on the side we look from
+    const n = d.nv, t = ((d.rot || 0) * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t), u = d.up, nu = cross3(n, u), nd = dot3(n, u);
+    const up = [0, 1, 2].map((k) => u[k] * c + nu[k] * s + n[k] * nd * (1 - c));
+    // up in the face's edge basis -> a direction on the flat piece
+    const g11 = dot3(e1, e1), g12 = dot3(e1, e2), g22 = dot3(e2, e2), r1 = dot3(e1, up), r2 = dot3(e2, up);
+    const det = g11 * g22 - g12 * g12 || 1, a = (r1 * g22 - r2 * g12) / det, bb = (r2 * g11 - r1 * g12) / det;
+    const du = a * (uv[2] - uv[0]) + bb * (uv[4] - uv[0]), dv = a * (uv[3] - uv[1]) + bb * (uv[5] - uv[1]);
+    // a piece flattened face-down would show the image mirrored: flip it back
+    const side = Math.sign(dot3(cross3(e1, e2), n));
+    const area = (uv[2] - uv[0]) * (uv[5] - uv[1]) - (uv[4] - uv[0]) * (uv[3] - uv[1]);
+    const r = (Math.atan2(dv, du) * 180) / Math.PI - 90;
+    return { pid: fu.p.id, id: d.id, img: d.img, iw: d.iw, ih: d.ih, s: d.s, x, y, r, op: d.op === undefined ? 1 : d.op, fx: side * area < 0 };
+  }
+
+  // Seams a decal can run across: model edges whose two faces are on pieces but
+  // meet at different flat positions (a cut inside a piece, or two pieces).
+  let cutEdges = null, cutEdgesFor = null;
+  // flat ends of model edge e seen from face f, plus the face's third corner
+  function edgeUV(f, e) {
+    const m = state.model, fu = faceUV(f), a = m.edgeV[2 * e], b = m.edgeV[2 * e + 1];
+    let ka = 0, kb = 1;
+    for (let k = 0; k < 3; k++) { const t = m.tri[3 * f + k]; if (t === a) ka = k; if (t === b) kb = k; }
+    const kc = 3 - ka - kb, u = fu.uv;
+    return [u[2 * ka], u[2 * ka + 1], u[2 * kb], u[2 * kb + 1], u[2 * kc], u[2 * kc + 1]];
+  }
+  function findCutEdges() {
+    if (cutEdgesFor === state.pieces) return cutEdges;
+    const m = state.model, out = [];
+    for (let e = 0; e < m.nE; e++) {
+      const s0 = m.edgeFaceStart[e];
+      if (m.edgeFaceStart[e + 1] - s0 !== 2) continue;
+      const f1 = m.edgeFaces[s0], f2 = m.edgeFaces[s0 + 1];
+      if (pieceOf[f1] < 0 || pieceOf[f2] < 0) continue;
+      if (pieceOf[f1] === pieceOf[f2]) {
+        const a = edgeUV(f1, e), b = edgeUV(f2, e);
+        if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) + Math.abs(a[3] - b[3]) < 1e-6) continue;
+      }
+      const P = m.pos, va = 3 * m.edgeV[2 * e], vb = 3 * m.edgeV[2 * e + 1];
+      out.push({ e, f1, f2, a: [P[va], P[va + 1], P[va + 2]], b: [P[vb], P[vb + 1], P[vb + 2]] });
+    }
+    cutEdges = out; cutEdgesFor = state.pieces;
+    return out;
+  }
+  const segDist = (p, a, b) => {
+    const ab = sub3(b, a), t = Math.max(0, Math.min(1, dot3(sub3(p, a), ab) / (dot3(ab, ab) || 1)));
+    return Math.hypot(...sub3(p, [a[0] + ab[0] * t, a[1] + ab[1] * t, a[2] + ab[2] * t]));
+  };
+
+  // Where a decal runs over a seam, the rest of it continues on the other side:
+  // the placement is unfolded across the seam edge onto that side's piece.
+  function decalCopies(d, pl) {
+    const M = Layout.artMatrix({ frame: IDENT }, pl, 0, 0), det = M.a * M.d - M.b * M.c || 1;
+    const tol = 0.02 * Math.max(pl.iw, pl.ih);
+    const inside = (u, v) => {
+      const px = (M.d * (u - M.e) - M.c * (v - M.f)) / det, py = (-M.b * (u - M.e) + M.a * (v - M.f)) / det;
+      return px >= -tol && py >= -tol && px <= pl.iw + tol && py <= pl.ih + tol;
+    };
+    const A = anchorPoint(d), R = 0.5 * pl.s * Math.hypot(1, pl.ih / pl.iw) * 1.3, home = pieceOf[d.f], cands = [];
+    for (const c of findCutEdges()) {
+      const dist = segDist(A, c.a, c.b);
+      if (dist > R) continue;
+      for (const [fa, fb] of [[c.f1, c.f2], [c.f2, c.f1]]) {
+        if (pieceOf[fa] !== home) continue;
+        const ea = edgeUV(fa, c.e);
+        if (!inside(ea[0], ea[1]) && !inside(ea[2], ea[3]) && !inside((ea[0] + ea[2]) / 2, (ea[1] + ea[3]) / 2)) continue;
+        const eb = edgeUV(fb, c.e);
+        // frames along the edge: t along it, n towards the face's own third corner
+        const frame = (q) => {
+          let tx = q[2] - q[0], ty = q[3] - q[1];
+          const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+          let nx = -ty, ny = tx;
+          if ((q[4] - q[0]) * nx + (q[5] - q[1]) * ny < 0) { nx = -nx; ny = -ny; }
+          return [tx, ty, nx, ny];
+        };
+        const [tax, tay, nax, nay] = frame(ea), [tbx, tby, nbx, nby] = frame(eb);
+        // side A's inward normal continues as side B's outward normal
+        const L = [tbx * tax - nbx * nax, tbx * tay - nbx * nay, tby * tax - nby * nax, tby * tay - nby * nay];
+        const t = [eb[0] - (L[0] * ea[0] + L[1] * ea[1]), eb[1] - (L[2] * ea[0] + L[3] * ea[1])];
+        cands.push({ pid: state.pieces[pieceOf[fb]].id, L, t, dist });
+      }
+    }
+    cands.sort((p, q) => p.dist - q.dist);
+    const kept = [];
+    for (const c of cands) {
+      if (kept.some((k) => k.pid === c.pid && Math.abs(k.L[0] - c.L[0]) + Math.abs(k.L[1] - c.L[1]) + Math.abs(k.L[2] - c.L[2]) + Math.abs(k.L[3] - c.L[3]) < 0.08 && Math.hypot(k.t[0] - c.t[0], k.t[1] - c.t[1]) < 1)) continue;
+      kept.push(c);
+      if (kept.length >= 6) break;
+    }
+    return kept.map(({ pid, L, t }) => ({
+      pid, id: d.id, img: d.img, iw: d.iw, ih: d.ih, s: d.s, op: pl.op, copy: true,
+      m: { a: L[0] * M.a + L[1] * M.b, b: L[2] * M.a + L[3] * M.b, c: L[0] * M.c + L[1] * M.d, d: L[2] * M.c + L[3] * M.d, e: L[0] * M.e + L[1] * M.f + t[0], f: L[2] * M.e + L[3] * M.f + t[1] },
+    }));
+  }
+
+  function resolveDecals() {
+    resolved = {};
+    if (!state.pieces || !pieceOf) return resolved;
+    const add = (pl) => { (resolved[pl.pid] || (resolved[pl.pid] = [])).push(pl); };
+    for (const d of decals) {
+      const pl = placeDecal(d);
+      d.pl = pl;
+      d.copies = pl ? decalCopies(d, pl) : [];
+      if (pl) add(pl);
+      d.copies.forEach(add);
+    }
+    return resolved;
+  }
+
+  // which decal is under a hit (top-most first)
+  function decalAt(hit) {
+    const fu = faceUV(hit.f);
+    if (!fu) return null;
+    const b = bary(hit.f, hit.point.toArray()), uv = fu.uv;
+    const x = b[0] * uv[0] + b[1] * uv[2] + b[2] * uv[4], y = b[0] * uv[1] + b[1] * uv[3] + b[2] * uv[5];
+    for (let i = decals.length - 1; i >= 0; i--) {
+      for (const pl of [decals[i].pl, ...(decals[i].copies || [])]) {
+        if (!pl || pl.pid !== fu.p.id) continue;
+        const m = Layout.artMatrix({ frame: IDENT }, pl, 0, 0), det = m.a * m.d - m.b * m.c || 1;
+        const px = (m.d * (x - m.e) - m.c * (y - m.f)) / det, py = (-m.b * (x - m.e) + m.a * (y - m.f)) / det;
+        if (px >= 0 && py >= 0 && px <= pl.iw && py <= pl.ih) return decals[i];
+      }
+    }
+    return null;
+  }
+
+  const pieceArt = (p) => artworkStore[p.id] || groupArt[p.group] || null;
+  function uvBox(p) {
+    let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
+    for (let v = 0; v < p.nV; v++) { const u = p.uv[2 * v], w = p.uv[2 * v + 1]; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < v0) v0 = w; if (w > v1) v1 = w; }
+    return { u0, v0, u1, v1 };
+  }
+
+  // Pack every printed piece into one texture (an atlas), then paint it like the print
+  function buildAtlas() {
+    if (!state.pieces || !pieceOf) return null;
+    const cells = [];
+    state.pieces.forEach((p, i) => {
+      const art = pieceArt(p), ds = resolved[p.id];
+      if (!settings.fill && !(art && art.img) && !(ds && ds.length)) return;
+      cells.push({ i, ...uvBox(p) });
+    });
+    if (!cells.length) return null;
+    const S = Math.min(4096, renderer.capabilities.maxTextureSize || 4096), pad = ATLAS_PAD, TOP = 64;
+    const area = cells.reduce((t, c) => t + (c.u1 - c.u0 + 2 * pad) * (c.v1 - c.v0 + 2 * pad), 0);
+    let k = Math.min(16, Math.sqrt((0.7 * S * S) / area)), W = 0, H = 0;
+    cells.sort((a, b) => (b.v1 - b.v0) - (a.v1 - a.v0));
+    for (let tries = 0; tries < 30; tries++, k *= 0.88) {
+      let x = 0, y = TOP, rowH = 0, ok = true;
+      W = TOP;
+      for (const c of cells) {
+        c.w = Math.ceil((c.u1 - c.u0 + 2 * pad) * k); c.h = Math.ceil((c.v1 - c.v0 + 2 * pad) * k);
+        if (c.w > S) { ok = false; break; }
+        if (x + c.w > S) { x = 0; y += rowH; rowH = 0; }
+        c.x = x; c.y = y; x += c.w; rowH = Math.max(rowH, c.h); W = Math.max(W, x);
+      }
+      H = y + rowH;
+      if (ok && H <= S) break;
+    }
+    let A = atlas;
+    if (!A || A.W !== W || A.H !== H) {
+      if (A) A.tex.dispose();
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = false;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      A = { cv, g: cv.getContext('2d'), tex, W, H };
+    }
+    A.k = k; A.cells = cells;
+    return A;
+  }
+
+  function drawArt(g, a, c) {
+    const im = imgEl(a.img);
+    if (!im) return;
+    const m = Layout.artMatrix({ frame: IDENT }, a, 0, 0);
+    g.save();
+    g.globalAlpha = a.op === undefined ? 1 : a.op;
+    if (a.tile) {
+      const pat = g.createPattern(im, 'repeat');
+      pat.setTransform(new DOMMatrix([m.a * a.iw / im.naturalWidth, m.b * a.iw / im.naturalWidth, m.c * a.ih / im.naturalHeight, m.d * a.ih / im.naturalHeight, m.e, m.f]));
+      g.fillStyle = pat;
+      g.fillRect(c.u0 - ATLAS_PAD, c.v0 - ATLAS_PAD, c.u1 - c.u0 + 2 * ATLAS_PAD, c.v1 - c.v0 + 2 * ATLAS_PAD);
+    } else {
+      g.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+      g.drawImage(im, 0, 0, a.iw, a.ih);
+      if (a.id !== undefined && a.id === decalSel) {
+        // selection frame, only in the 3D view (about 0.5 mm wide)
+        const lw = (0.5 * a.iw) / (a.s || 1);
+        g.globalAlpha = 1; g.lineWidth = lw; g.setLineDash([3 * lw, 2 * lw]);
+        g.strokeStyle = '#ff3b30'; g.strokeRect(lw / 2, lw / 2, a.iw - lw, a.ih - lw);
+      }
+    }
+    g.restore();
+  }
+
+  function paintAtlas(A) {
+    const g = A.g, pad = ATLAS_PAD;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, A.W, A.H);
+    for (const c of A.cells) {
+      const p = state.pieces[c.i];
+      g.save();
+      g.beginPath(); g.rect(c.x, c.y, c.w, c.h); g.clip();
+      // piece UV (mm, v up) -> atlas pixels (y down)
+      g.setTransform(A.k, 0, 0, -A.k, c.x + (pad - c.u0) * A.k, c.y + (c.v1 + pad) * A.k);
+      g.fillStyle = settings.fill ? settings.fillColor : '#ffffff';
+      g.fillRect(c.u0 - pad, c.v0 - pad, c.u1 - c.u0 + 2 * pad, c.v1 - c.v0 + 2 * pad);
+      for (const a of [pieceArt(p), ...(resolved[p.id] || [])]) if (a && a.img) drawArt(g, a, c);
+      g.restore();
+    }
+    A.tex.needsUpdate = true;
+  }
+
+  // texture coordinates: printed faces into their cell, the rest onto the white band
+  function writeUVs(A) {
+    const attr = state.geom.attributes.uv, arr = attr.array, pad = ATLAS_PAD;
+    const wx = 32 / A.W, wy = 32 / A.H;
+    for (let i = 0; i < arr.length; i += 2) { arr[i] = wx; arr[i + 1] = wy; }
+    surf.printed = new Uint8Array(state.pieces.length);
+    for (const c of A.cells) {
+      const p = state.pieces[c.i];
+      surf.printed[c.i] = 1;
+      for (let lf = 0; lf < p.faceIds.length; lf++) {
+        const f = p.faceIds[lf];
+        for (let k = 0; k < 3; k++) {
+          const v = p.F[3 * lf + k];
+          arr[6 * f + 2 * k] = (c.x + (p.uv[2 * v] - c.u0 + pad) * A.k) / A.W;
+          arr[6 * f + 2 * k + 1] = (c.y + (c.v1 + pad - p.uv[2 * v + 1]) * A.k) / A.H;
+        }
+      }
+    }
+    attr.needsUpdate = true;
+  }
+
+  // rebuild the 3D print look from the current pieces, textures and decals
+  let surfFrame = 0;
+  function refreshSurface() {
+    surfFrame = 0;
+    if (!state.geom) return;
+    const A = state.pieces && pieceOf ? buildAtlas() : null;
+    if (!A) {
+      if (atlas) { atlas.tex.dispose(); atlas = null; }
+      surf.printed = null;
+      if (material.map) { material.map = null; material.needsUpdate = true; }
+      recolorAll();
+      return;
+    }
+    atlas = A;
+    paintAtlas(A);
+    writeUVs(A);
+    const want = surf.on ? A.tex : null;
+    if (material.map !== want) { material.map = want; material.needsUpdate = true; }
+    recolorAll();
+  }
+  function scheduleSurface() { if (!surfFrame) surfFrame = requestAnimationFrame(refreshSurface); }
+
+  function setPrintView(on) {
+    surf.on = !!on && !!(state.pieces && state.pieces.length);
+    $('show-print').setAttribute('aria-pressed', String(surf.on));
+    const want = surf.on && atlas ? atlas.tex : null;
+    if (material.map !== want) { material.map = want; material.needsUpdate = true; }
+    if (state.geom) recolorAll();
+  }
+
+  // groups the texture goes on: the current one, or every painted group
+  function surfTargets() {
+    const used = new Set();
+    for (let f = 0; f < state.faceGroup.length; f++) if (state.faceGroup[f]) used.add(state.faceGroup[f]);
+    if ($('surf-target').value === 'all' || !used.has(state.group)) return [...used];
+    return [state.group];
+  }
+
+  async function applySurface(kind, own) {
+    if (!state.model) { syncSurfUI(); return; }
+    const targets = surfTargets();
+    if (!targets.length) { toast(i18n('surf.needPaint'), 'bad'); syncSurfUI(); return; }
+    if (!kind) for (const g of targets) delete groupArt[g];
+    else {
+      const t = own || texture(kind), s = Math.max(2, Number($('surf-scale').value) || t.s);
+      for (const g of targets) groupArt[g] = { img: t.img, iw: t.iw, ih: t.ih, s, x: 0, y: 0, r: 0, op: 1, tile: true, tex: kind };
+    }
+    if (!(await ensurePieces())) { syncSurfUI(); return; }
+    relayout();
+    setPrintView(true);
+    syncSurfUI();
+  }
+
+  function syncSurfUI() {
+    const a = groupArt[state.group];
+    $('surf-tex').value = a ? a.tex : '';
+    if (a) $('surf-scale').value = String(a.s);
+    $('show-print').hidden = !(state.pieces && state.pieces.length);
+  }
+
+  function syncDecalUI() {
+    const d = decals.find((q) => q.id === decalSel);
+    $('decal-edit').hidden = !d;
+    $('decal-hint').textContent = i18n(pendingDecal ? 'decal.place' : d ? 'decal.sel' : 'decal.hint');
+    if (d) {
+      $('decal-size').value = String(+d.s.toFixed(1));
+      $('decal-rot').value = String(d.rot || 0);
+      $('decal-op').value = String(Math.round((d.op === undefined ? 1 : d.op) * 100));
+    }
+  }
+
+  // stick an image on the model where the screen point (cx, cy) hits it
+  async function addDecalAt(im, cx, cy) {
+    if (!(await ensurePieces())) return;
+    const hit = pick(cx, cy);
+    if (!hit || pieceOf[hit.f] < 0) { toast(i18n('decal.offPiece'), 'bad'); return; }
+    // a comfortable first size: about half the piece, never larger than 150 mm
+    const b = uvBox(state.pieces[pieceOf[hit.f]]);
+    const room = Math.max(8, Math.min(150, 0.5 * Math.min(b.u1 - b.u0, b.v1 - b.v0)));
+    const s = Math.min(room, (room * im.iw) / im.ih);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray();
+    const d = { id: decalSeq++, img: im.img, iw: im.iw, ih: im.ih, s: +s.toFixed(1), rot: 0, op: 1, up, ...anchorAt(hit) };
+    decals.push(d);
+    decalSel = d.id;
+    setTool('decal');
+    relayout();
+    setPrintView(true);
+    syncDecalUI();
+  }
+
+  async function decalFile(f, cx, cy) {
+    let im;
+    try { im = await loadArtFile(f); } catch (e) { toast(i18n('msg.artBad'), 'bad'); return; }
+    if (cx === undefined) {
+      // no drop point: place it with the next click on the model
+      pendingDecal = im;
+      setTool('decal');
+      syncDecalUI();
+      toast(i18n('decal.place'));
+      return;
+    }
+    addDecalAt(im, cx, cy);
+  }
+
+  function decalDown(e) {
+    const hit = pick(e.clientX, e.clientY);
+    if (pendingDecal) {
+      const im = pendingDecal;
+      pendingDecal = null;
+      if (hit) addDecalAt(im, e.clientX, e.clientY); else syncDecalUI();
+      return;
+    }
+    const d = hit && pieceOf ? decalAt(hit) : null;
+    const was = decalSel;
+    decalSel = d ? d.id : null;
+    syncDecalUI();
+    if (was !== decalSel) scheduleSurface();
+    if (!d) return;
+    // keep the grab offset: the anchor's screen point follows the pointer
+    const v = new THREE.Vector3(...anchorPoint(d)).project(camera), rect = canvas.getBoundingClientRect();
+    const ax = rect.left + ((v.x + 1) / 2) * rect.width, ay = rect.top + ((1 - v.y) / 2) * rect.height;
+    decalDrag = { id: e.pointerId, d, dx: ax - e.clientX, dy: ay - e.clientY };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  }
+
+  function decalMove(e) {
+    if (!decalDrag || e.pointerId !== decalDrag.id) return false;
+    const hit = pick(e.clientX + decalDrag.dx, e.clientY + decalDrag.dy);
+    if (hit && pieceOf[hit.f] >= 0) {
+      const d = decalDrag.d, a = anchorAt(hit);
+      d.f = a.f; d.b = a.b;
+      // keep "up" in the new face's plane, so a decal dragged round a bend keeps its heading
+      const n = a.nv, inPlane = sub3(d.up, n.map((x) => x * dot3(d.up, n)));
+      const len = Math.hypot(...inPlane);
+      if (len > 0.2) { d.up = inPlane.map((x) => x / len); d.nv = n; }
+      resolveDecals();
+      scheduleSurface();
+    }
+    return true;
+  }
+
+  function decalUp(e) {
+    if (!decalDrag || (e && e.pointerId !== decalDrag.id)) return;
+    decalDrag = null;
+    relayout();
+  }
+
+  function editDecal(fn) {
+    const d = decals.find((q) => q.id === decalSel);
+    if (!d) return;
+    fn(d);
+    resolveDecals();
+    scheduleSurface();
+    scheduleRelayout();
+  }
+  function deleteDecal() {
+    if (decalSel === null) return;
+    decals = decals.filter((q) => q.id !== decalSel);
+    decalSel = null;
+    syncDecalUI();
+    relayout();
+  }
+
+  // for the project file: built-in textures are stored by name only
+  function surfaceForSave() {
+    const ga = {};
+    for (const [g, a] of Object.entries(groupArt)) ga[g] = a.tex && a.tex !== 'custom' ? { ...a, img: null } : a;
+    return { groupArt: ga, decals: decals.map(({ pl, copies, ...d }) => d) };
+  }
+  function surfaceFromSave(s) {
+    groupArt = {}; decals = []; decalSel = null; pendingDecal = null;
+    if (s && typeof s === 'object') {
+      for (const [g, a] of Object.entries(s.groupArt || {})) {
+        if (!a) continue;
+        if (a.img) groupArt[g] = a;
+        else if (TEXTURE_TILES[a.tex]) groupArt[g] = { ...a, img: texture(a.tex).img };
+      }
+      const nF = state.model ? state.model.nF : 0;
+      decals = (Array.isArray(s.decals) ? s.decals : []).filter((d) => d && d.img && d.f >= 0 && d.f < nF);
+      decalSeq = decals.reduce((m, d) => Math.max(m, d.id + 1), 1);
+    }
+    syncSurfUI(); syncDecalUI();
+  }
+
+  $('show-print').addEventListener('click', async () => {
+    if (!surf.on && !(await ensurePieces())) return;
+    setPrintView(!surf.on);
+    if (surf.on) scheduleSurface();
+  });
+  $('surf-tex').addEventListener('change', (e) => {
+    const kind = e.target.value;
+    if (kind === 'custom') { $('surf-input').click(); return; }
+    if (kind) $('surf-scale').value = String(texture(kind).s);
+    applySurface(kind);
+  });
+  $('surf-input').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) { syncSurfUI(); return; }
+    try { const im = await loadArtFile(f); $('surf-scale').value = '50'; applySurface('custom', { ...im, s: 50 }); }
+    catch (err) { toast(i18n('msg.artBad'), 'bad'); syncSurfUI(); }
+  });
+  $('surf-scale').addEventListener('input', (e) => {
+    const s = Number(e.target.value);
+    if (!(s >= 2)) return;
+    for (const g of surfTargets()) if (groupArt[g]) groupArt[g].s = s;
+    scheduleRelayout();
+  });
+  $('decal-input').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) decalFile(f); });
+  $('decal-size').addEventListener('input', (e) => { const v = Number(e.target.value); if (v >= 1) editDecal((d) => { d.s = v; }); });
+  $('decal-rot').addEventListener('input', (e) => editDecal((d) => { d.rot = Number(e.target.value) || 0; }));
+  $('decal-op').addEventListener('input', (e) => editDecal((d) => { d.op = Math.max(0.05, Math.min(1, (Number(e.target.value) || 100) / 100)); }));
+  $('decal-del').addEventListener('click', deleteDecal);
+  $('decal-dup').addEventListener('click', () => {
+    const d = decals.find((q) => q.id === decalSel);
+    if (!d) return;
+    const c = { ...d, id: decalSeq++, b: d.b.slice(), up: d.up.slice(), nv: d.nv.slice(), pl: null, copies: [] };
+    // the copy sits a little down and to the right on screen
+    const v = new THREE.Vector3(...anchorPoint(d)).project(camera), rect = canvas.getBoundingClientRect();
+    const hit = pick(rect.left + ((v.x + 1) / 2) * rect.width + 30, rect.top + ((1 - v.y) / 2) * rect.height + 30);
+    if (hit && pieceOf && pieceOf[hit.f] >= 0) { const a = anchorAt(hit); c.f = a.f; c.b = a.b; }
+    decals.push(c);
+    decalSel = c.id;
+    syncDecalUI();
+    relayout();
+  });
+
   // click a piece to select it; drag its artwork to move it
   let artDrag = null;
   $('pages').addEventListener('pointerdown', (e) => {
@@ -2218,6 +2794,7 @@
       unwrap: { islands: $('islands').checked, tol: Number($('island-tol').value), quality: $('quality').value, autoSeam: $('auto-seam').checked },
       view: { pos: camera.position.toArray(), target: controls.target.toArray() },
       artwork: artworkForSave(),
+      surface: surfaceForSave(),
     });
   }
   async function saveProject() {
@@ -2260,6 +2837,7 @@
         controls.update();
       }
       artworkFromSave(job.artwork);
+      surfaceFromSave(job.surface);
       switchTab('3d');
       toast(i18n('msg.projOpened', { name: file.name }));
     } catch (e) {
@@ -2729,6 +3307,7 @@
     e.preventDefault();
     if (scanDlg.open) scanLoad(f);
     else if (currentTab === '2d') { if (artSel === null) toast(i18n('art.pick')); else applyArtFile(f); }
+    else if (state.model && state.faceGroup.some((g) => g)) decalFile(f);
     else openScan(f);
   });
   $('scan-cancel').addEventListener('click', () => scanDlg.close());
@@ -2772,7 +3351,7 @@
   window.__decal = {
     state, settings, relayout, generate, camera, controls, bucketFill, pick, shortestPath, Geo, Flat, Layout, Project, fitView, projectJSON, openProject,
     // draw one frame now (the animation loop pauses while the page is hidden)
-    scanDebug: () => ({ scan, loftShape, scanOffset, scanTriangles, roundCorners }),
+    surfaceDebug: () => ({ groupArt, decals, resolved, atlas, surf, placeDecal, faceUV }), scanDebug: () => ({ scan, loftShape, scanOffset, scanTriangles, roundCorners }),
     renderNow: (t) => { stepCamAnim(t === undefined ? performance.now() : t); controls.update(); renderer.render(scene, camera); gzDirty = true; renderGizmo(); },
   };
 })();

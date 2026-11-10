@@ -19,12 +19,14 @@ const job = {
   name: 'part.stl', raw, unitScale: 25.4, upAxis: 'z', faceGroup, blocked, seams,
   settings: { paper: 'A3', mirror: false, bleed: 1.5 }, unwrap: { islands: true, tol: 2 }, view: { pos: [1, 2, 3], target: [0, 0, 0] },
   artwork: { 3: { img: 'data:image/png;base64,AAAA', x: 1, y: 2, s: 30, r: 45 } },
+  surface: { groupArt: { 1: { tex: 'carbon', img: null, s: 22, tile: true } }, decals: [{ id: 1, img: 'data:image/png;base64,AAAA', iw: 4, ih: 2, s: 40, rot: 15, op: 1, f: 5, b: [0.2, 0.3, 0.5], up: [0, 1, 0], nv: [0, 0, 1] }] },
 };
 const text = Project.encode(job);
 const back = Project.decode(text);
 check('model round trip', same(back.raw, raw), `${(text.length / 1e3).toFixed(0)} kB`);
 check('paint round trip', same(back.faceGroup, faceGroup) && same(back.blocked, blocked) && same(back.seams, seams));
 check('settings, view, artwork kept', back.settings.paper === 'A3' && back.settings.bleed === 1.5 && back.view.pos[2] === 3 && back.artwork[3].r === 45);
+check('surface textures and decals kept', back.surface.groupArt[1].tex === 'carbon' && back.surface.decals[0].rot === 15 && back.surface.decals[0].b[2] === 0.5);
 check('units and up axis kept', back.unitScale === 25.4 && back.upAxis === 'z');
 
 const demo = Project.decode(Project.encode({ ...job, raw: null, demo: 'cyl' }));

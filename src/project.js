@@ -71,6 +71,7 @@ const Project = (() => {
         group: rle(job.faceGroup), blocked: rle(job.blocked), seams: rle(job.seams),
       },
       settings: job.settings || {}, unwrap: job.unwrap || {}, view: job.view || null, artwork: job.artwork || {},
+      surface: job.surface || null,
     };
     if (job.raw && !job.demo) out.model = f32ToB64(job.raw);
     return JSON.stringify(out);
@@ -86,6 +87,7 @@ const Project = (() => {
       demo: o.demo || null, raw: o.model ? b64ToF32(o.model) : null, fingerprint: o.fingerprint || null,
       faceGroup: unrle(o.paint.group), blocked: unrle(o.paint.blocked), seams: unrle(o.paint.seams),
       settings: o.settings || {}, unwrap: o.unwrap || {}, view: o.view || null, artwork: o.artwork || {},
+      surface: o.surface || null,
     };
     if (job.raw && job.fingerprint && fingerprint(job.raw) !== job.fingerprint) throw new Error('model data is damaged');
     return job;

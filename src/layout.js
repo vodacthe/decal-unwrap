@@ -350,13 +350,19 @@ const Layout = (() => {
   function artMatrix(it, art, ox, oy) {
     const k = (Number(art.s) || 50) / (art.iw || 1), r = ((Number(art.r) || 0) * Math.PI) / 180;
     const cs = Math.cos(r), sn = Math.sin(r), hw = (art.iw || 1) / 2, hh = (art.ih || 1) / 2;
+    // a decal continued across a seam carries its own full matrix (m)
+    if (art.m) { const mm = mulM(it.frame, art.m); return { ...mm, e: mm.e + ox, f: mm.f + oy }; }
     const toUV = {
       a: k * cs, b: k * sn, c: k * sn, d: -k * cs,
       e: (Number(art.x) || 0) - k * (hw * cs + hh * sn), f: (Number(art.y) || 0) - k * (hw * sn - hh * cs),
     };
-    const m = mulM(it.frame, toUV);
+    // fx: the image is flipped left-right (a decal on a piece unwrapped mirror-wise)
+    const m = mulM(it.frame, art.fx ? mulM(toUV, { a: -1, b: 0, c: 0, d: 1, e: art.iw || 1, f: 0 }) : toUV);
     return { ...m, e: m.e + ox, f: m.f + oy };
   }
+  // the base artwork of an item: its own (placed in 2D) or its decal group's surface texture
+  const artFor = (settings, it) => (settings.artwork && settings.artwork[it.parentId]) || (settings.groupArt && settings.groupArt[it.group]) || null;
+  const decalsFor = (settings, it) => (settings.decals && settings.decals[it.parentId]) || [];
 
   // even-odd point in polygon over all rings
   function insideRings(rings, x, y) {
@@ -596,8 +602,8 @@ const Layout = (() => {
   function decorate(items, settings, warnSet) {
     // printed pieces carry colour or artwork: their number and marks go outside
     for (const it of items) {
-      const art = settings.artwork && settings.artwork[it.parentId];
-      it.printed = !!settings.fill || !!(art && art.img);
+      const art = artFor(settings, it);
+      it.printed = !!settings.fill || !!(art && art.img) || decalsFor(settings, it).length > 0;
       it.outLabel = settings.labels !== false && it.printed;
     }
     const needSeams = settings.seamMarks !== false || settings.tabs;
@@ -720,9 +726,11 @@ const Layout = (() => {
     const paintRings = it.bleed || it.rings;
     const paintHoles = it.bleed ? holesOf(it.bleed) : it.holes;
     if (settings.fill) prims.push({ t: 'poly', rings: paintRings.map((r) => tr(r, ox, oy)), holes: paintHoles.slice(), fill: settings.fillColor, stroke: null, width: 0, dash: null });
-    const art = settings.artwork && settings.artwork[it.parentId];
-    if (art && art.img && it.frame) {
-      prims.push({ t: 'image', clip: paintRings.map((r) => tr(r, ox, oy)), href: art.img, iw: art.iw, ih: art.ih, matrix: artMatrix(it, art, ox, oy), opacity: art.op === undefined ? 1 : art.op, tile: !!art.tile, owner: it.parentId });
+    const art = artFor(settings, it);
+    // the base image or pattern, then decals stuck on in the 3D view, on top
+    for (const a of [art, ...decalsFor(settings, it)]) {
+      if (!a || !a.img || !it.frame) continue;
+      prims.push({ t: 'image', clip: paintRings.map((r) => tr(r, ox, oy)), href: a.img, iw: a.iw, ih: a.ih, matrix: artMatrix(it, a, ox, oy), opacity: a.op === undefined ? 1 : a.op, tile: !!a.tile, owner: it.parentId });
     }
     prims.push({ t: 'poly', rings: it.rings.map((r) => tr(r, ox, oy)), holes: it.holes.slice(), fill: null, stroke: '#111111', width: settings.lineWidth, dash: null, owner: it.parentId, item: it.id });
     for (const f of it.folds) prims.push({ t: 'line', pts: tr(f, ox, oy), stroke: '#6b7280', width: 0.15, dash: [1.6, 1.2] });
@@ -1698,5 +1706,5 @@ const Layout = (() => {
     setTimeout(() => window.print(), 60);
   }
 
-  return { PAPERS, ascii, build, toSVG, toPDF, toCutSVG, toDXF, printPages, _internal: { splitToFit, cutAcross, subsetExtent, preparePiece, pack, clipRingRect, clipPolylineRect, ringArea, simplifyRing } };
+  return { PAPERS, ascii, build, toSVG, toPDF, toCutSVG, toDXF, printPages, artMatrix, _internal: { splitToFit, cutAcross, subsetExtent, preparePiece, pack, clipRingRect, clipPolylineRect, ringArea, simplifyRing } };
 })();
