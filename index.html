@@ -4458,11 +4458,13 @@ const Layout = (() => {
     const W = r3(layout.pageW), H = r3(layout.pageH);
     const out = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" font-family="Be Vietnam Pro, Arial, sans-serif">`];
     out.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>`);
+    // ids get a prefix so a second copy of the page (print) does not point at the preview's
+    const pfx = opts.idPrefix || '';
     // each artwork image is embedded once per page and reused
     const imgIds = new Map();
     for (const p of page.prims) {
       if (p.t !== 'image' || imgIds.has(p.href)) continue;
-      const id = `art-${index}-${imgIds.size}`;
+      const id = `${pfx}art-${index}-${imgIds.size}`;
       imgIds.set(p.href, id);
       out.push(`<defs><image id="${id}" href="${esc(p.href)}" width="${p.iw}" height="${p.ih}" preserveAspectRatio="none"/></defs>`);
     }
@@ -4471,7 +4473,7 @@ const Layout = (() => {
     for (const p of page.prims) {
       if (p.t === 'poly' && p.fill && p.rings.length) out.push(`<path d="${ringsPath(p.rings)}" fill="${p.fill}" fill-rule="evenodd" stroke="none"/>`);
       else if (p.t === 'image' && p.clip.length) {
-        const cid = `art-clip-${index}-${clipN++}`;
+        const cid = `${pfx}art-clip-${index}-${clipN++}`;
         const op = p.opacity < 1 ? ` opacity="${p.opacity}"` : '';
         const owner = p.owner !== undefined ? ` data-art="${esc(p.owner)}"` : '';
         out.push(`<defs><clipPath id="${cid}"><path d="${ringsPath(p.clip)}" clip-rule="evenodd"/></clipPath></defs>`);
@@ -4484,7 +4486,7 @@ const Layout = (() => {
       }
     }
     if (opts.preview && page.heat) {
-      const id = `clip-heat-${index}`;
+      const id = `${pfx}clip-heat-${index}`;
       const c = page.clip;
       out.push(`<defs><clipPath id="${id}"><rect x="${r3(c.x)}" y="${r3(c.y)}" width="${r3(c.w)}" height="${r3(c.h)}"/></clipPath></defs><g clip-path="url(#${id})">`);
       const t = page.heat.tris;
@@ -4691,7 +4693,7 @@ const Layout = (() => {
     const W = r3(layout.pageW), H = r3(layout.pageH);
     const root = document.createElement('div');
     root.id = 'print-root';
-    root.innerHTML = layout.pages.map((_, i) => `<div class="print-page" style="width:${W}mm;height:${H}mm">${toSVG(layout, i, { preview: false })}</div>`).join('');
+    root.innerHTML = layout.pages.map((_, i) => `<div class="print-page" style="width:${W}mm;height:${H}mm">${toSVG(layout, i, { preview: false, idPrefix: 'print-' })}</div>`).join('');
     document.body.appendChild(root);
     const st = document.createElement('style');
     st.id = 'print-style';
@@ -4709,7 +4711,16 @@ const Layout = (() => {
     document.head.appendChild(st);
     const cleanup = () => { root.remove(); st.remove(); window.removeEventListener('afterprint', cleanup); };
     window.addEventListener('afterprint', cleanup);
-    setTimeout(() => window.print(), 60);
+    // wait until every artwork image is decoded, or the print can come out without it
+    const hrefs = [...new Set(layout.pages.flatMap((p) => p.prims).filter((p) => p.t === 'image').map((p) => p.href))];
+    const ready = hrefs.map((h) => new Promise((res) => {
+      const im = new Image();
+      im.onload = im.onerror = () => res();
+      im.src = h;
+      if (im.decode) im.decode().then(res, res);
+    }));
+    const timeout = new Promise((res) => setTimeout(res, 4000));
+    Promise.race([Promise.all(ready), timeout]).then(() => setTimeout(() => window.print(), 120));
   }
 
   return { PAPERS, ascii, build, toSVG, toPDF, toCutSVG, toDXF, printPages, artMatrix, _internal: { splitToFit, cutAcross, subsetExtent, preparePiece, pack, clipRingRect, clipPolylineRect, ringArea, simplifyRing } };
