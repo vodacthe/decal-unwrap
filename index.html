@@ -4462,7 +4462,10 @@ const Layout = (() => {
     const pfx = opts.idPrefix || '';
     // each artwork image is embedded once per page and reused
     const imgIds = new Map();
+    // a page painted beforehand (print): fills and artwork come from one image
+    if (opts.background) out.push(`<image href="${opts.background}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>`);
     for (const p of page.prims) {
+      if (opts.background) break;
       if (p.t !== 'image' || imgIds.has(p.href)) continue;
       const id = `${pfx}art-${index}-${imgIds.size}`;
       imgIds.set(p.href, id);
@@ -4470,7 +4473,7 @@ const Layout = (() => {
     }
     let clipN = 0;
     const mat = (m) => `matrix(${[m.a, m.b, m.c, m.d, m.e, m.f].map((x) => +x.toFixed(6)).join(' ')})`;
-    for (const p of page.prims) {
+    for (const p of opts.background ? [] : page.prims) {
       if (p.t === 'poly' && p.fill && p.rings.length) out.push(`<path d="${ringsPath(p.rings)}" fill="${p.fill}" fill-rule="evenodd" stroke="none"/>`);
       else if (p.t === 'image' && p.clip.length) {
         const cid = `${pfx}art-clip-${index}-${clipN++}`;
@@ -4687,13 +4690,15 @@ const Layout = (() => {
   }
 
   // ---- Print -------------------------------------------------------------------
-  function printPages(layout) {
+  async function printPages(layout) {
+    const W0 = layout.pageW, H0 = layout.pageH, bgs = [];
+    for (const page of layout.pages) bgs.push(page.prims.some((p) => p.t === 'image') ? await rasterLayer(page, W0, H0) : null);
     const old = document.getElementById('print-root'); if (old) old.remove();
     const oldS = document.getElementById('print-style'); if (oldS) oldS.remove();
     const W = r3(layout.pageW), H = r3(layout.pageH);
     const root = document.createElement('div');
     root.id = 'print-root';
-    root.innerHTML = layout.pages.map((_, i) => `<div class="print-page" style="width:${W}mm;height:${H}mm">${toSVG(layout, i, { preview: false, idPrefix: 'print-' })}</div>`).join('');
+    root.innerHTML = layout.pages.map((_, i) => `<div class="print-page" style="width:${W}mm;height:${H}mm">${toSVG(layout, i, { preview: false, idPrefix: 'print-', background: bgs[i] })}</div>`).join('');
     document.body.appendChild(root);
     const st = document.createElement('style');
     st.id = 'print-style';
@@ -4712,7 +4717,7 @@ const Layout = (() => {
     const cleanup = () => { root.remove(); st.remove(); window.removeEventListener('afterprint', cleanup); };
     window.addEventListener('afterprint', cleanup);
     // wait until every artwork image is decoded, or the print can come out without it
-    const hrefs = [...new Set(layout.pages.flatMap((p) => p.prims).filter((p) => p.t === 'image').map((p) => p.href))];
+    const hrefs = bgs.filter(Boolean);
     const ready = hrefs.map((h) => new Promise((res) => {
       const im = new Image();
       im.onload = im.onerror = () => res();
@@ -8177,7 +8182,7 @@ const Scan = (() => {
   };
   const paperTag = () => (settings.paper === 'custom' ? 'custom' : settings.paper);
 
-  $('btn-print').addEventListener('click', () => { if (needLayout()) Layout.printPages(state.layout); });
+  $('btn-print').addEventListener('click', () => { if (needLayout()) Layout.printPages(state.layout).catch((e) => { console.error(e); toast(e.message || String(e), 'bad'); }); });
   $('btn-pdf').addEventListener('click', async () => {
     if (!needLayout()) return;
     try { await saveFile(`${baseName()}-decal-${paperTag()}.pdf`, await Layout.toPDF(state.layout)); }

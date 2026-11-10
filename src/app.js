@@ -2854,7 +2854,7 @@
   };
   const paperTag = () => (settings.paper === 'custom' ? 'custom' : settings.paper);
 
-  $('btn-print').addEventListener('click', () => { if (needLayout()) Layout.printPages(state.layout); });
+  $('btn-print').addEventListener('click', () => { if (needLayout()) Layout.printPages(state.layout).catch((e) => { console.error(e); toast(e.message || String(e), 'bad'); }); });
   $('btn-pdf').addEventListener('click', async () => {
     if (!needLayout()) return;
     try { await saveFile(`${baseName()}-decal-${paperTag()}.pdf`, await Layout.toPDF(state.layout)); }
