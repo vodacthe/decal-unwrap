@@ -1454,6 +1454,7 @@ const Flat = (() => {
       closed: '{n} closed surface(s): turn on automatic seams or split them into several groups.',
       torus: '{n} ring-shaped surface(s) may overlap after flattening; split them into several groups.',
       slivers: 'Left out {n} hair-thin strip(s) (under 0.6 mm wide, usually bits of fillets).',
+      merged: 'Joined {n} flat piece(s) that lie on the same plane as a neighbour (the model is made of separate meshes there).',
       huge: '{n} piece(s) have more than 150,000 triangles; flattening is slow.',
     },
     vi: {
@@ -1466,6 +1467,7 @@ const Flat = (() => {
       closed: '{n} bề mặt khép kín: hãy bật tự cắt đường nối hoặc chia thành nhiều nhóm.',
       torus: '{n} bề mặt dạng vòng có thể chồng lấn sau khi trải phẳng; hãy chia thành nhiều nhóm.',
       slivers: 'Đã bỏ {n} dải quá mảnh (hẹp dưới 0,6 mm, thường là phần mép bo).',
+      merged: 'Đã gộp {n} mảnh phẳng nằm cùng mặt phẳng với mảnh bên cạnh (chỗ đó mô hình gồm nhiều lưới rời nhau).',
       huge: '{n} mảnh có hơn 150.000 tam giác; trải phẳng sẽ chậm.',
     },
   };
@@ -2537,6 +2539,272 @@ const Flat = (() => {
     return [outer, ...holes];
   }
 
+  // ---- merging flat pieces --------------------------------------------------
+  // A flat face built from several separate meshes (a model exported as bodies
+  // that overlap or only touch, without welded edges) flattens as one piece per
+  // mesh. Pieces of one decal group that lie on the same plane and touch or
+  // overlap are joined: their triangles are kept as they are (the 3D view still
+  // maps every face) and the cut outline is the 2D union of their outlines.
+  const clipLib = () => (typeof globalThis !== 'undefined' && globalThis.ClipperLib) || (typeof window !== 'undefined' && window.ClipperLib) || null;
+  const CLIP_S = 1000; // Clipper works in integers: 1 unit = 0.001 mm
+
+  // Union of index rings over 2D points `uv` (outer rings positive, holes
+  // negative). Gaps narrower than 2*eps are closed. Returns a list of shapes
+  // [{ outer: [[x, y]...], holes: [...] }] or null without Clipper.
+  function unionRings(uv, rings, eps = 0.05) {
+    const C = clipLib();
+    if (!C || !rings.length) return null;
+    const S = CLIP_S;
+    const paths = rings.map((L) => Array.from(L, (v) => ({ X: Math.round(uv[2 * v] * S), Y: Math.round(uv[2 * v + 1] * S) })));
+    const c = new C.Clipper();
+    c.AddPaths(paths, C.PolyType.ptSubject, true);
+    let sol = new C.Paths();
+    c.Execute(C.ClipType.ctUnion, sol, C.PolyFillType.pftNonZero, C.PolyFillType.pftNonZero);
+    const off = (src, d) => {
+      const co = new C.ClipperOffset(3, 0.25 * S * 0.01);
+      co.AddPaths(src, C.JoinType.jtMiter, C.EndType.etClosedPolygon);
+      return co;
+    };
+    let grown = new C.Paths();
+    off(sol, 0).Execute(grown, eps * S);
+    const tree = new C.PolyTree();
+    off(grown, 0).Execute(tree, -eps * S);
+    const shapes = [];
+    const pts = (p) => p.map((q) => [q.X / S, q.Y / S]);
+    const walk = (node) => {
+      for (const o of node.Childs()) {
+        const holes = [];
+        for (const h of o.Childs()) { holes.push(pts(h.Contour())); walk(h); }
+        shapes.push({ outer: pts(o.Contour()), holes });
+      }
+    };
+    walk(tree);
+    return shapes;
+  }
+
+  const ringArea = (R) => { let s = 0; for (let i = 0; i < R.length; i++) { const p = R[i], q = R[(i + 1) % R.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; };
+
+  // Turn a union shape into index loops: points that sit on an original ring
+  // vertex reuse it, the others are new vertices (uv, 3D from toP).
+  // Returns { uv, P, loops } with the new vertices appended, or null.
+  function shapeToLoops(shape, uv, P, ringVerts, toP) {
+    const cell = 0.2, grid = new Map(), key = (x, y) => `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
+    for (const v of ringVerts) {
+      const k = key(uv[2 * v], uv[2 * v + 1]);
+      if (!grid.has(k)) grid.set(k, []);
+      grid.get(k).push(v);
+    }
+    const nearest = (x, y) => {
+      let best = -1, bd = 0.004 * 0.004;
+      const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        for (const v of grid.get(`${cx + i},${cy + j}`) || []) {
+          const d = (uv[2 * v] - x) ** 2 + (uv[2 * v + 1] - y) ** 2;
+          if (d < bd) { bd = d; best = v; }
+        }
+      }
+      return best;
+    };
+    const nv0 = uv.length / 2, exU = [], exP = [];
+    const toIdx = (R) => {
+      const L = [];
+      for (const [x, y] of R) {
+        let v = nearest(x, y);
+        if (v < 0) { v = nv0 + exU.length / 2; exU.push(x, y); exP.push(...toP(x, y)); }
+        if (L[L.length - 1] !== v && L[0] !== v) L.push(v);
+      }
+      return L;
+    };
+    if (ringArea(shape.outer) < 0) shape.outer.reverse();
+    const outer = toIdx(shape.outer);
+    if (outer.length < 3) return null;
+    const holes = [];
+    for (const h of shape.holes) {
+      const a = Math.abs(ringArea(h));
+      if (a < 0.3) continue;
+      if (ringArea(h) > 0) h.reverse();
+      const L = toIdx(h);
+      if (L.length >= 3) holes.push(L);
+    }
+    const U = new Float64Array(uv.length + exU.length); U.set(uv); U.set(exU, uv.length);
+    const Pn = new Float64Array(P.length + exP.length); Pn.set(P); Pn.set(exP, P.length);
+    return { uv: U, P: Pn, loops: [Uint32Array.from(outer), ...holes.map((L) => Uint32Array.from(L))] };
+  }
+
+  // uv -> 3D map of a flat piece, taken from its largest triangle
+  function flatMap(uv, P, F) {
+    let best = -1, ba = 0;
+    for (let i = 0; i < F.length / 3; i++) {
+      const a = F[3 * i], b = F[3 * i + 1], c = F[3 * i + 2];
+      const ar = Math.abs((uv[2 * b] - uv[2 * a]) * (uv[2 * c + 1] - uv[2 * a + 1]) - (uv[2 * c] - uv[2 * a]) * (uv[2 * b + 1] - uv[2 * a + 1]));
+      if (ar > ba) { ba = ar; best = i; }
+    }
+    if (best < 0) return null;
+    const a = F[3 * best], b = F[3 * best + 1], c = F[3 * best + 2];
+    const ux = uv[2 * a], uy = uv[2 * a + 1];
+    const b1 = uv[2 * b] - ux, b2 = uv[2 * b + 1] - uy, c1 = uv[2 * c] - ux, c2 = uv[2 * c + 1] - uy, det = b1 * c2 - b2 * c1;
+    const A = [P[3 * a], P[3 * a + 1], P[3 * a + 2]];
+    const E1 = [0, 1, 2].map((k) => P[3 * b + k] - A[k]), E2 = [0, 1, 2].map((k) => P[3 * c + k] - A[k]);
+    return (x, y) => {
+      const qx = x - ux, qy = y - uy, s = (qx * c2 - qy * c1) / det, t = (b1 * qy - b2 * qx) / det;
+      return [A[0] + s * E1[0] + t * E2[0], A[1] + s * E1[1] + t * E2[1], A[2] + s * E1[2] + t * E2[2]];
+    };
+  }
+
+  // The outline of a flat piece made of separate meshes: union of the boundary
+  // loops of its triangles. Used for split-to-fit parts of a merged piece.
+  function flatOutline(uv, P, F, rings) {
+    const shapes = unionRings(uv, rings);
+    if (!shapes || !shapes.length) return null;
+    shapes.sort((a, b) => Math.abs(ringArea(b.outer)) - Math.abs(ringArea(a.outer)));
+    const toP = flatMap(uv, P, F);
+    if (!toP) return null;
+    const rv = new Set();
+    for (const L of rings) for (const v of L) rv.add(v);
+    return shapeToLoops(shapes[0], uv, P, rv, toP);
+  }
+
+  // plane of a piece: area-weighted normal, offset, and whether it is flat
+  function planeOf(p) {
+    const { P, F } = p;
+    const n = [0, 0, 0];
+    for (let i = 0; i < F.length / 3; i++) {
+      const a = 3 * F[3 * i], b = 3 * F[3 * i + 1], c = 3 * F[3 * i + 2];
+      const u = [P[b] - P[a], P[b + 1] - P[a + 1], P[b + 2] - P[a + 2]], w = [P[c] - P[a], P[c + 1] - P[a + 1], P[c + 2] - P[a + 2]];
+      n[0] += u[1] * w[2] - u[2] * w[1]; n[1] += u[2] * w[0] - u[0] * w[2]; n[2] += u[0] * w[1] - u[1] * w[0];
+    }
+    const l = Math.hypot(n[0], n[1], n[2]);
+    if (!l) return null;
+    n[0] /= l; n[1] /= l; n[2] /= l;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < F.length; i++) {
+      const v = 3 * F[i], d = n[0] * P[v] + n[1] * P[v + 1] + n[2] * P[v + 2];
+      if (d < lo) lo = d; if (d > hi) hi = d;
+    }
+    if (hi - lo > 0.15 || !(p.stats.maxDistortion < 0.003)) return null;
+    return { n, d: (lo + hi) / 2 };
+  }
+
+  function mergeFlat(pieces) {
+    if (pieces.length < 2 || !clipLib()) return { pieces, merged: 0 };
+    const pl = pieces.map(planeOf);
+    // clusters of pieces on one plane (same group, same facing side)
+    const par = pieces.map((_, i) => i), find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
+    for (let i = 0; i < pieces.length; i++) {
+      for (let j = i + 1; j < pieces.length; j++) {
+        const a = pl[i], b = pl[j];
+        if (!a || !b || pieces[i].group !== pieces[j].group) continue;
+        if (a.n[0] * b.n[0] + a.n[1] * b.n[1] + a.n[2] * b.n[2] < Math.cos(Math.PI / 180)) continue;
+        if (Math.abs(a.d - b.d) > 0.2) continue;
+        par[find(j)] = find(i);
+      }
+    }
+    const clusters = new Map();
+    pieces.forEach((_, i) => { const r = find(i); if (!clusters.has(r)) clusters.set(r, []); clusters.get(r).push(i); });
+    const out = [];
+    let merged = 0;
+    for (const members of clusters.values()) {
+      if (members.length < 2) { out.push(pieces[members[0]]); continue; }
+      // everything in the uv frame of the largest member
+      members.sort((x, y) => pieces[y].stats.area3D - pieces[x].stats.area3D);
+      const ref = pieces[members[0]];
+      const toP = flatMap(ref.uv, ref.P, ref.F);
+      if (!toP) { members.forEach((i) => out.push(pieces[i])); continue; }
+      // 3D -> ref uv: invert toP on the plane (rigid, so least squares on 3 points is exact)
+      const O = toP(0, 0), X = toP(1, 0), Y = toP(0, 1);
+      const ex = [X[0] - O[0], X[1] - O[1], X[2] - O[2]], ey = [Y[0] - O[0], Y[1] - O[1], Y[2] - O[2]];
+      const gxx = ex[0] * ex[0] + ex[1] * ex[1] + ex[2] * ex[2], gyy = ey[0] * ey[0] + ey[1] * ey[1] + ey[2] * ey[2], gxy = ex[0] * ey[0] + ex[1] * ey[1] + ex[2] * ey[2];
+      const gd = gxx * gyy - gxy * gxy;
+      const toUV = (x, y, z) => {
+        const q = [x - O[0], y - O[1], z - O[2]];
+        const px = q[0] * ex[0] + q[1] * ex[1] + q[2] * ex[2], py = q[0] * ey[0] + q[1] * ey[1] + q[2] * ey[2];
+        return [(px * gyy - py * gxy) / gd, (py * gxx - px * gxy) / gd];
+      };
+      // every member in ref uv, with its own vertex offset
+      const all = members.map((i) => pieces[i]);
+      let nV = 0;
+      const base = all.map((p) => { const b = nV; nV += p.uv.length / 2; return b; });
+      const uv = new Float64Array(2 * nV), P = new Float64Array(3 * nV);
+      all.forEach((p, k) => {
+        const n = p.uv.length / 2;
+        for (let v = 0; v < n; v++) {
+          const w = base[k] + v;
+          P[3 * w] = p.P[3 * v]; P[3 * w + 1] = p.P[3 * v + 1]; P[3 * w + 2] = p.P[3 * v + 2];
+          const [u, t] = toUV(p.P[3 * v], p.P[3 * v + 1], p.P[3 * v + 2]);
+          uv[2 * w] = u; uv[2 * w + 1] = t;
+        }
+      });
+      const memberRings = all.map((p, k) => p.loops.map((L) => Array.from(L, (v) => v + base[k])));
+      const shapes = unionRings(uv, memberRings.flat());
+      if (!shapes || !shapes.length) { all.forEach((p) => out.push(p)); continue; }
+      // which members fall in which union shape (by the middle of their largest triangle)
+      const C = clipLib();
+      const inShape = (s, x, y) => C.Clipper.PointInPolygon({ X: Math.round(x * CLIP_S), Y: Math.round(y * CLIP_S) }, s.outer.map(([a, b]) => ({ X: Math.round(a * CLIP_S), Y: Math.round(b * CLIP_S) }))) !== 0;
+      const owner = all.map((p, k) => {
+        let best = 0, ba = -1;
+        for (let i = 0; i < p.F.length / 3; i++) {
+          const [a, b, c] = [0, 1, 2].map((q) => p.F[3 * i + q] + base[k]);
+          const ar = Math.abs((uv[2 * b] - uv[2 * a]) * (uv[2 * c + 1] - uv[2 * a + 1]) - (uv[2 * c] - uv[2 * a]) * (uv[2 * b + 1] - uv[2 * a + 1]));
+          if (ar > ba) { ba = ar; best = i; }
+        }
+        const vs = [0, 1, 2].map((q) => p.F[3 * best + q] + base[k]);
+        const x = (uv[2 * vs[0]] + uv[2 * vs[1]] + uv[2 * vs[2]]) / 3, y = (uv[2 * vs[0] + 1] + uv[2 * vs[1] + 1] + uv[2 * vs[2] + 1]) / 3;
+        return shapes.findIndex((s) => inShape(s, x, y));
+      });
+      const done = new Set();
+      shapes.forEach((s, si) => {
+        const ks = all.map((_, k) => k).filter((k) => owner[k] === si);
+        if (!ks.length) return;
+        if (ks.length === 1) { out.push(all[ks[0]]); done.add(ks[0]); return; }
+        // pack only the vertices of these members
+        const ps = ks.map((k) => all[k]);
+        let m = 0;
+        const off = ps.map((p) => { const b = m; m += p.uv.length / 2; return b; });
+        const U = new Float64Array(2 * m), Q = new Float64Array(3 * m);
+        ks.forEach((k, j) => {
+          const n = all[k].uv.length / 2;
+          U.set(uv.subarray(2 * base[k], 2 * (base[k] + n)), 2 * off[j]);
+          Q.set(P.subarray(3 * base[k], 3 * (base[k] + n)), 3 * off[j]);
+        });
+        const rv = new Set();
+        ks.forEach((k, j) => { for (const L of all[k].loops) for (const v of L) rv.add(v + off[j]); });
+        const res = shapeToLoops(s, U, Q, rv, toP);
+        if (!res) { ks.forEach((k) => { out.push(all[k]); done.add(k); }); return; }
+        const nF = ps.reduce((t, p) => t + p.F.length / 3, 0);
+        const F = new Uint32Array(3 * nF), faceIds = new Int32Array(nF), D = new Float32Array(nF);
+        const folds = [], cuts = [];
+        let fo = 0;
+        ps.forEach((p, j) => {
+          const n = p.F.length / 3;
+          for (let i = 0; i < 3 * n; i++) F[3 * fo + i] = p.F[i] + off[j];
+          faceIds.set(p.faceIds, fo);
+          if (p.faceDistortion) D.set(p.faceDistortion, fo);
+          for (const e of p.folds || []) folds.push({ ...e, a: e.a + off[j], b: e.b + off[j] });
+          for (const e of p.cuts || []) cuts.push({ ...e, a: e.a + off[j], b: e.b + off[j] });
+          fo += n;
+        });
+        let area = Math.abs(ringArea(s.outer));
+        for (const h of s.holes) area -= Math.abs(ringArea(h));
+        const st = ps.map((p) => p.stats);
+        out.push({
+          group: ref.group, faceIds, nV: res.uv.length / 2, uv: res.uv, P: res.P, F, loops: res.loops, folds, cuts, faceDistortion: D,
+          merged: ps.length,
+          stats: {
+            area3D: area, area2D: area,
+            meanDistortion: st.reduce((t, x) => t + x.meanDistortion * x.area3D, 0) / (st.reduce((t, x) => t + x.area3D, 0) || 1),
+            maxDistortion: Math.max(...st.map((x) => x.maxDistortion)), peakDistortion: Math.max(...st.map((x) => x.peakDistortion || 0)),
+            flipped: st.reduce((t, x) => t + (x.flipped || 0), 0), seams: st.reduce((t, x) => t + (x.seams || 0), 0),
+            nFaces: nF, method: 'planar',
+          },
+        });
+        merged += ps.length - 1;
+        ks.forEach((k) => done.add(k));
+      });
+      all.forEach((p, k) => { if (!done.has(k)) out.push(p); });
+    }
+    return { pieces: out, merged };
+  }
+
   // opts.islands (default true): split each painted area into pieces whose
   // stretch stays under opts.islandTolerance (default 1.5%), like a UV unwrap.
   async function generate(model, faceGroup, opts = {}, onProgress = () => {}, isCancelled = () => false) {
@@ -2709,6 +2977,9 @@ const Flat = (() => {
         await tick();
       }
     }
+    // join flat pieces that lie on one plane and touch (separate meshes)
+    let joined = 0;
+    if (opts.mergeFlat !== false) { const r = mergeFlat(out); if (r.merged) { out.length = 0; out.push(...r.pieces); joined = r.merged; } }
     // number pieces by group, then by size
     out.sort((a, b) => a.group - b.group || b.stats.area3D - a.stats.area3D);
     out.forEach((p, i) => { p.id = i + 1; });
@@ -2717,12 +2988,13 @@ const Flat = (() => {
     if (closed) warnings.push(msg(opts.lang, 'closed', { n: closed }));
     if (torus) warnings.push(msg(opts.lang, 'torus', { n: torus }));
     if (slivers) warnings.push(msg(opts.lang, 'slivers', { n: slivers }));
+    if (joined) warnings.push(msg(opts.lang, 'merged', { n: joined }));
     if (huge) warnings.push(msg(opts.lang, 'huge', { n: huge }));
     onProgress(msg(opts.lang, 'done'), 1);
     return { pieces: out, warnings };
   }
 
-  return { generate, _internal: { prepare, components, buildMesh, planSeams, splitChart, localFrames, lscm, arap, distortion } };
+  return { generate, flatOutline, _internal: { mergeFlat, unionRings, prepare, components, buildMesh, planSeams, splitChart, localFrames, lscm, arap, distortion } };
 })();
 
 // ===== src/layout.js =====
@@ -3850,10 +4122,16 @@ const Layout = (() => {
         ekeys.set(kk, (ekeys.get(kk) || 0) + 1);
       }
       const has = (a, b) => (a < N && b < N ? ekeys.get(a < b ? a * N + b : b * N + a) || 0 : 0);
+      // a piece joined from separate meshes: the part's outline is the union of its meshes
+      let loops = subsetLoops(piece.uv, F), extra = null;
+      if (piece.merged && loops.length > 1 && typeof Flat !== 'undefined' && Flat.flatOutline) {
+        const o = Flat.flatOutline(piece.uv, piece.P, F, loops);
+        if (o) { loops = o.loops; extra = { uv: o.uv, P: o.P, nV: o.uv.length / 2 }; }
+      }
       return {
-        ...piece,
+        ...piece, ...extra,
         id: `${piece.id}.${idx + 1}`, parentId: piece.id, part: idx + 1, parts: parts.length,
-        F, faceDistortion: D, loops: subsetLoops(piece.uv, F),
+        F, faceDistortion: D, loops,
         folds: (piece.folds || []).filter((e) => has(e.a, e.b) === 2),
         cuts: (piece.cuts || []).filter((e) => has(e.a, e.b) > 0),
       };

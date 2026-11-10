@@ -1122,10 +1122,16 @@ const Layout = (() => {
         ekeys.set(kk, (ekeys.get(kk) || 0) + 1);
       }
       const has = (a, b) => (a < N && b < N ? ekeys.get(a < b ? a * N + b : b * N + a) || 0 : 0);
+      // a piece joined from separate meshes: the part's outline is the union of its meshes
+      let loops = subsetLoops(piece.uv, F), extra = null;
+      if (piece.merged && loops.length > 1 && typeof Flat !== 'undefined' && Flat.flatOutline) {
+        const o = Flat.flatOutline(piece.uv, piece.P, F, loops);
+        if (o) { loops = o.loops; extra = { uv: o.uv, P: o.P, nV: o.uv.length / 2 }; }
+      }
       return {
-        ...piece,
+        ...piece, ...extra,
         id: `${piece.id}.${idx + 1}`, parentId: piece.id, part: idx + 1, parts: parts.length,
-        F, faceDistortion: D, loops: subsetLoops(piece.uv, F),
+        F, faceDistortion: D, loops,
         folds: (piece.folds || []).filter((e) => has(e.a, e.b) === 2),
         cuts: (piece.cuts || []).filter((e) => has(e.a, e.b) > 0),
       };
